@@ -8,13 +8,22 @@ import { Database } from "bun:sqlite";
 const db = new Database("db.sqlite");
 
 db.query(`
+  CREATE TABLE IF NOT EXISTS humans (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE
+  );
+`).run();
+
+db.query(`
   CREATE TABLE IF NOT EXISTS bots (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     code TEXT NOT NULL,
     uploaded TEXT NOT NULL,
     hash TEXT,
-    email TEXT
+    human_id INTEGER NOT NULL,
+    FOREIGN KEY(human_id) REFERENCES humans(id)
   );
 `).run();
 
@@ -43,7 +52,7 @@ db.query(`
   );
 `).run();
 
-async function addBotToLeague(code: Blob, name: string, email: string): Promise<{ ok: bool, msg: string }> {
+async function compile(code: Blob) {
   const dir = "../simplified"; // TODO - every execution should have its own dir.
 
   const hasher = new Bun.CryptoHasher("sha256");
@@ -58,7 +67,6 @@ async function addBotToLeague(code: Blob, name: string, email: string): Promise<
   await rm.exited;
 
   // Run the compiler.
-  // const proc = Bun.spawn(["dotnet", "publish", "-c", "Release", "--self-contained", "true"], {
   const proc = Bun.spawn(["dotnet", "publish", "-c", "Release"], { cwd: dir });
   await proc.exited;
 
@@ -73,16 +81,37 @@ async function addBotToLeague(code: Blob, name: string, email: string): Promise<
     Bun.file(`${dir}/bin/Release/net7.0/Chess-Challenge.dll`),
   );
 
+  return { ok: true, msg: "", hash };
+}
+
+function addHumanIfNotExists(name: string, email: string): number {
+  try {
+    return db
+      .query('INSERT INTO humans (name, email) VALUES (?1, ?2) RETURNING ID')
+      .get([name, email]).id;
+  } catch (err) {
+    return db
+      .query('SELECT id FROM humans WHERE email = ?1')
+      .get([email]).id;
+  }
+}
+
+async function addBotToLeague(code: Blob, name: string, humanId: number): Promise<{ ok: bool, msg: string }> {
+  const res = await compile(code);
+  if (!res.ok) {
+    return { ok: false, msg: res.msg };
+  }
+
   // TODO should we make names or hashes unique?
   db.query(`
-    INSERT INTO bots (name, code, uploaded, email, hash)
-    VALUES ($name, $code, $uploaded, $email, $hash)
+    INSERT INTO bots (name, code, uploaded, hash, human_id)
+    VALUES ($name, $code, $uploaded, $hash, $human_id)
   `).run({
     $name: name,
     $code: new Uint8Array(await code.arrayBuffer()), // ugh
     $uploaded: new Date().toISOString(),
-    $email: email,
-    $hash: hash,
+    $hash: res.hash,
+    $human_id: humanId
   });
 
   return { ok: true, msg: "" };
@@ -114,14 +143,12 @@ app.post("/upload", async (c) => {
   const body = await c.req.parseBody();
 
   if (!(body.code instanceof Blob)) return c.text('Missing code', 401);
-  if (typeof body.name !== 'string') return c.text('Missing name', 401);
+  if (typeof body.botname !== 'string') return c.text('Missing botname', 401);
+  if (typeof body.humanname !== 'string') return c.text('Missing humanname', 401);
   if (typeof body.email !== 'string') return c.text('Missing email', 401);
 
-  const code = body.code;
-  const name = body.name;
-  const email = body.email;
-
-  const { ok, msg } = await addBotToLeague(code, name, email);
+  const humanId = addHumanIfNotExists(body.humanname, body.email);
+  const { ok, msg } = await addBotToLeague(body.code, body.botname, humanId);
 
   // Is this abusing http status codes? Oh well...
   return c.text(msg, ok ? 200 : 400);
@@ -138,7 +165,7 @@ app.post("/fight/:wid/:bid/", async (c) => {
   const dir = await prepareDLLs(whash, bhash);
 
   const gameId = db
-    .query("INSERT INTO games (wid, bid) VALUES ($wid, $bid) RETURNING id")
+    .query("INSERT INTO games (wid, bid, initial_time_ms) VALUES ($wid, $bid, 1000) RETURNING id")
     .get({ $wid: wid, $bid: bid }).id;
 
   startGame(db, gameId, dir, whash, bhash);
