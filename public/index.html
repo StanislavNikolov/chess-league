@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  </head>
+  <body>
+    <script>
+      fetch('/api/bots/')
+      .then(req => req.json())
+      .then(bots => {
+        for(const b of bots) {
+          console.log(b);
+        }
+
+      })
+    </script>
+  </body>
+</html>
+

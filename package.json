@@ -5,6 +5,7 @@
     "bun-types": "latest"
   },
   "dependencies": {
+    "chess.js": "^1.0.0-beta.6",
     "hono": "^2.2.5"
   },
   "scripts": {
