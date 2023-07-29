@@ -108,6 +108,7 @@ const app = new Hono();
 
 app.use("/favicon.ico", serveStatic({ path: "./public/favicon.ico" }));
 app.use("/", serveStatic({ path: "./public/index.html" }));
+app.use("/public/*", serveStatic({ root: "./" }));
 
 app.post("/upload", async (c) => {
   const body = await c.req.parseBody();
@@ -149,6 +150,18 @@ app.get("/api/bots/", async c => {
   const bots = db.query("SELECT id, name, uploaded FROM bots").all();
   console.log(bots);
   return c.json(bots);
+});
+
+app.get("/api/games/", async c => {
+  const games = db.query(`
+    SELECT games.id, wid, bid, w.name as wname, b.name as bname, started, ended, winner
+    FROM games
+    JOIN bots AS w ON w.id = wid
+    JOIN bots AS b ON b.id = bid
+    ORDER BY games.id DESC
+    LIMIT 50
+  `).all();
+  return c.json(games);
 });
 
 const port = parseInt(process.env.PORT) || 3000;

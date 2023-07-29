@@ -1,9 +1,91 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <style>
+body {
+  margin: 0;
+}
+main {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 20px;
+  box-sizing: border-box;
+
+  color: rgb(47, 79, 79);
+  background-color: rgb(41, 82, 102);
+
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  grid-gap: 20px;
+  grid-template-areas: 
+    "lead head head upl"
+    "lead live live upl"
+    "lead live live old";
+}
+#head-tile { grid-area: head; }
+#leaderboard-tile { grid-area: lead; }
+#old-games-tile { grid-area: old; }
+#live-games-tile { grid-area: live; }
+#upload-tile { grid-area: upl; }
+
+.tile {
+  display: inline-block;
+  font-family: -apple-system;
+  background-color: white;
+  color: rgb(31, 42, 55);
+  padding: 8px;
+  border-radius: 8px;
+  box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+}
+
+
+#head-tile {
+  background: url("./public/head.png");
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+.bot {
+  display: inline-block;
+  width: 10rem;
+}
+.bot.white {
+  text-align: right;
+}
+    </style>
   </head>
+
   <body>
+    <main>
+      <div id="head-tile" class="tile">
+      </div>
+      <div id="leaderboard-tile" class="tile">
+        <h2>Leaderboard</h2>
+      </div>
+      <div id="live-games-tile" class="tile">
+        <h2>Live games</h2>
+      </div>
+      <div id="old-games-tile" class="tile">
+        <h2>Old games</h2>
+        <div id="old-games"></div>
+      </div>
+      <div id="upload-tile" class="tile">
+        <h2>Upload your bot</h2>
+      </div>
+    </main>
+
     <script>
+      const $ = s => document.querySelector(s);
+
+      function sanitizeHTML(text) {
+        const element = document.createElement('div');
+        element.innerText = text;
+        return element.innerHTML;
+      }
+
       fetch('/api/bots/')
       .then(req => req.json())
       .then(bots => {
@@ -11,6 +93,26 @@
           console.log(b);
         }
 
+      })
+
+      function renderGame(g) {
+        console.log(g);
+        return `
+          <div class="game">
+            <span class="bot white">${sanitizeHTML(g.wname)}</span>
+            <span class="bot black">${sanitizeHTML(g.wname)}</span>
+          </div>
+        `;
+      }
+
+      fetch('/api/games/')
+      .then(req => req.json())
+      .then(games => {
+        let html = '';
+        for(const g of games) {
+          html += renderGame(g);
+        }
+        $('#games').innerHTML = html;
       })
     </script>
   </body>
