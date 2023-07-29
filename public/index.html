@@ -13,36 +13,51 @@ main {
   box-sizing: border-box;
 
   color: rgb(47, 79, 79);
+
+  /*
   background-color: rgb(41, 82, 102);
+  */
+  /*
+  background: radial-gradient(circle at 50% 0%, rgba(236,195,159,1) 0%, rgba(210,204,179,1) 16%, rgba(62,72,82,1) 64%, rgba(31,44,50,1) 100%);
+  */
+  background: radial-gradient(circle at 50% 0%, rgba(251,186,194,1) 0%, rgba(171,121,155,1) 71%, rgba(209,114,146,1) 100%);
+
+
 
   display: grid;
   grid-template-columns: 1fr 1fr 1fr 1fr;
-  grid-template-rows: 1fr 1fr 1fr;
+  grid-template-rows: minmax(auto, 200px) 1fr 1fr 1fr;
   grid-gap: 20px;
   grid-template-areas: 
-    "lead head head upl"
-    "lead live live upl"
-    "lead live live old";
+    "head head head head"
+    "hlead live live old"
+    "blead live live old"
+    "blead live live upl";
 }
 #head-tile { grid-area: head; }
-#leaderboard-tile { grid-area: lead; }
+#human-leaderboard-tile { grid-area: hlead; }
+#bot-leaderboard-tile { grid-area: blead; }
 #old-games-tile { grid-area: old; }
 #live-games-tile { grid-area: live; }
 #upload-tile { grid-area: upl; }
 
 .tile {
   display: inline-block;
-  font-family: -apple-system;
-  background-color: white;
-  color: rgb(31, 42, 55);
+  font-family: Verdana;
+  background-color: rgba(255,255,255,1);
   padding: 8px;
   border-radius: 8px;
   box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
 }
 
+h2 {
+  text-align: center;
+  color: #37539C;
+}
+
 
 #head-tile {
-  background: url("./public/head.png");
+  background: url("./public/head4.png");
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;
@@ -62,8 +77,13 @@ main {
     <main>
       <div id="head-tile" class="tile">
       </div>
-      <div id="leaderboard-tile" class="tile">
-        <h2>Leaderboard</h2>
+      <div id="human-leaderboard-tile" class="tile">
+        <h2>Human Leaderboard</h2>
+        <div id="human-list"></div>
+      </div>
+      <div id="bot-leaderboard-tile" class="tile">
+        <h2>Bot Leaderboard</h2>
+        <div id="bot-list"></div>
       </div>
       <div id="live-games-tile" class="tile">
         <h2>Live games</h2>
@@ -86,13 +106,27 @@ main {
         return element.innerHTML;
       }
 
+      function renderLeaderboardItem(place, bot) {
+        console.log(bot);
+        const age = (Math.random() * 10).toFixed(0) + ' days';
+        return `
+          <div class="leaderboard-item">
+            <span class="place">${place}</span>
+            <span class="bot">${sanitizeHTML(bot.name)}</span>
+            <span class="age">${age}</span>
+          </div>
+        `;
+
+      }
+
       fetch('/api/bots/')
       .then(req => req.json())
       .then(bots => {
-        for(const b of bots) {
-          console.log(b);
+        let html = '';
+        for(let i = 0;i < bots.length;i ++) {
+          html += renderLeaderboardItem(i+1, bots[i]);
         }
-
+        $('#bot-list').innerHTML = html;
       })
 
       function renderGame(g) {
