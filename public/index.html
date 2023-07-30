@@ -34,12 +34,35 @@ main {
 .tile {
   display: inline-block;
   font-family: Verdana;
-  background-color: rgba(255,255,255,1);
+  background-color: #f6eae0;
   padding: 8px;
   border-radius: 8px;
   color: #7a4e3c;
   box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
 }
+
+.leaderboard-item {
+  display: flex;
+  align-items: center;
+  background-color: #eddfcc;
+  padding: 6px;
+  margin: 6px 2px;
+  border-radius: 4px;
+}
+.place {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  padding-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.place img {
+  width: 100%;
+  height: 100%;
+}
+
 
 h2 {
   text-align: center;
@@ -62,6 +85,18 @@ h2 {
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #ecc39f;
+}
+
+#live-games {
+  display: grid;
+  grid-gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
 }
 
 .game {
@@ -76,12 +111,18 @@ h2 {
 .bot.white {
   text-align: right;
 }
+#timer {
+  font-size: xxx-large;
+}
     </style>
   </head>
 
   <body>
     <main>
       <div id="head-tile" class="tile">
+        <br>
+        <span id="timer"></span>
+        <span>days left</span>
       </div>
       <div id="human-leaderboard-tile" class="tile">
         <h2>Human Leaderboard</h2>
@@ -93,15 +134,18 @@ h2 {
       </div>
       <div id="live-games-tile" class="tile">
         <h2>Live Games</h2>
+        <div id="live-games">
+        </div>
       </div>
       <div id="old-games-tile" class="tile">
         <h2>Old Games</h2>
         <div id="old-games"></div>
       </div>
       <div id="upload-tile" class="tile">
-        <h2>Upload Your Bot</h2>
-      </div>
+        <h2>Upload Your Bot</h2> </div>
     </main>
+
+    <script type="module" src="/public/chessboard-element@1.2.0.bundled.mjs"></script>
 
     <script>
       const $ = s => document.querySelector(s);
@@ -112,14 +156,18 @@ h2 {
         return element.innerHTML;
       }
 
-      function renderLeaderboardItem(place, bot) {
-        console.log(bot);
+      function renderLeaderboardItem(place, name) {
         const age = (Math.random() * 10).toFixed(0) + ' days';
+
+        let icon = `<b>${place}</b>`
+        if (place <= 3) {
+          icon = `<img src="/public/medal-${place}.svg"></img>`
+        }
+
         return `
           <div class="leaderboard-item">
-            <span class="place">${place}</span>
-            <span class="bot">${sanitizeHTML(bot.name)}</span>
-            <span class="age">${age}</span>
+            <span class="place">${icon}</span>
+            <span>${sanitizeHTML(name)}</span>
           </div>
         `;
 
@@ -130,13 +178,22 @@ h2 {
       .then(bots => {
         let html = '';
         for(let i = 0;i < bots.length;i ++) {
-          html += renderLeaderboardItem(i+1, bots[i]);
+          html += renderLeaderboardItem(i+1, bots[i].name);
         }
         $('#bot-list').innerHTML = html;
       })
 
+      fetch('/api/humans/')
+        .then(req => req.json())
+        .then(humans => {
+          let html = '';
+          for(let i = 0;i < humans.length;i ++) {
+            html += renderLeaderboardItem(i+1, humans[i].name);
+          }
+          $('#human-list').innerHTML = html;
+        })
+
       function renderGame(g) {
-        console.log(g);
         return `
           <div class="game">
             <span class="bot white">
@@ -144,14 +201,14 @@ h2 {
               ${sanitizeHTML(g.wname)}
             </span>
             <span class="bot black">
-              ${sanitizeHTML(g.wname)}
+              ${sanitizeHTML(g.bname)}
               ${g.winner === 'b' ? '<span class="crown b"></span>' : ''}
             </span>
           </div>
         `;
       }
 
-      fetch('/api/games/')
+      fetch('/api/old-games/')
       .then(req => req.json())
       .then(games => {
         let html = '';
@@ -159,7 +216,52 @@ h2 {
           html += renderGame(g);
         }
         $('#old-games').innerHTML = html;
-      })
+      });
+
+      function renderLiveGame(g) {
+        return `
+          <div data-game-id=${g.id}>
+            <div>${sanitizeHTML(g.wname)}</div>
+            <br>
+            <chess-board position=${g.fen}></chess-board>
+            <br>
+            <div>${sanitizeHTML(g.bname)}</div>
+          </div>
+        `;
+      }
+
+      
+      function updateLiveGames() {
+        fetch('/api/live-games/')
+        .then(req => req.json())
+        .then(games => {
+          for(const g of games) {
+            const existingEl = document.querySelector(`[data-game-id="${g.id}"]`);
+            if (!existingEl) {
+              $('#live-games').innerHTML += renderLiveGame(g);
+            } else {
+              existingEl.querySelector('chess-board').setPosition(g.fen);
+            }
+          }
+
+
+          for(const drawnGame of document.querySelectorAll(`[data-game-id]`)) {
+            const gameId = Number(drawnGame.getAttribute("data-game-id"));
+            if(!games.find(g => g.id === gameId)) drawnGame.remove();
+          }
+          
+          for(const cb of document.querySelectorAll('chess-board')) {
+            // There is a bug with the chess-board library. It has an element
+            // taking space that shouldn't exist.
+            console.log(cb.shadowRoot.querySelector('#dragged-pieces'));
+            cb.shadowRoot.querySelector('#dragged-pieces')?.remove();
+          }
+        })
+      };
+
+      setInterval(updateLiveGames, 100);
+
+      $("#timer").innerHTML = ((new Date('2023-10-01') - new Date()) / (1000 * 60 * 60 * 24)).toFixed(0);
     </script>
   </body>
 </html>

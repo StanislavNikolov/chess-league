@@ -1,11 +1,15 @@
 import { Hono } from "hono";
+import { logger } from 'hono/logger';
 import { serveStatic } from "hono/serve-static.bun";
 import { tmpdir } from "node:os";
 import { mkdir } from "node:fs/promises";
 import { startGame } from "./matchmaker";
+import { Chess } from "chess.js";
 
 import { Database } from "bun:sqlite";
 const db = new Database("db.sqlite");
+
+db.query('PRAGMA foreign_keys = ON;').run();
 
 db.query(`
   CREATE TABLE IF NOT EXISTS humans (
@@ -17,13 +21,13 @@ db.query(`
 
 db.query(`
   CREATE TABLE IF NOT EXISTS bots (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     code TEXT NOT NULL,
     uploaded TEXT NOT NULL,
     hash TEXT,
     human_id INTEGER NOT NULL,
-    FOREIGN KEY(human_id) REFERENCES humans(id)
+    FOREIGN KEY(human_id) REFERENCES humans(id) ON DELETE CASCADE
   );
 `).run();
 
@@ -37,8 +41,8 @@ db.query(`
     winner VARCHAR(1),
     initial_time_ms NUMBER NOT NULL,
     reason TEXT,
-    FOREIGN KEY(wid) REFERENCES bots(id),
-    FOREIGN KEY(bid) REFERENCES bots(id)
+    FOREIGN KEY(wid) REFERENCES bots(id) ON DELETE CASCADE,
+    FOREIGN KEY(bid) REFERENCES bots(id) ON DELETE CASCADE
   );
 `).run();
 
@@ -48,7 +52,7 @@ db.query(`
     game_id INTEGER NOT NULL,
     move TEXT NOT NULL,
     ms_since_game_start NUMBER NOT NULL,
-    FOREIGN KEY(game_id) REFERENCES games(id)
+    FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE
   );
 `).run();
 
@@ -138,6 +142,7 @@ const app = new Hono();
 app.use("/favicon.ico", serveStatic({ path: "./public/favicon.ico" }));
 app.use("/", serveStatic({ path: "./public/index.html" }));
 app.use("/public/*", serveStatic({ root: "./" }));
+app.use('*', logger());
 
 app.post("/upload", async (c) => {
   const body = await c.req.parseBody();
@@ -175,20 +180,50 @@ app.post("/fight/:wid/:bid/", async (c) => {
 
 app.get("/api/bots/", async c => {
   const bots = db.query("SELECT id, name, uploaded FROM bots").all();
-  console.log(bots);
+  // console.log(bots);
   return c.json(bots);
 });
 
-app.get("/api/games/", async c => {
+app.get("/api/old-games/", async c => {
   const games = db.query(`
     SELECT games.id, wid, bid, w.name as wname, b.name as bname, started, ended, winner
     FROM games
     JOIN bots AS w ON w.id = wid
     JOIN bots AS b ON b.id = bid
+    WHERE winner IS NOT NULL
     ORDER BY games.id DESC
     LIMIT 50
   `).all();
   return c.json(games);
+});
+
+app.get("/api/live-games/", async c => {
+  const games = db.query(`
+    SELECT games.id, wid, bid, w.name as wname, b.name as bname, started, ended, winner
+    FROM games
+    JOIN bots AS w ON w.id = wid
+    JOIN bots AS b ON b.id = bid
+    WHERE winner IS NULL
+    ORDER BY games.id DESC
+    LIMIT 50
+  `).all();
+  // Simulate each game to calculate its fen string
+  for (const g of games) {
+    const moves = db.query('SELECT move FROM moves WHERE game_id = ?1 ORDER BY id').all(g.id);
+
+    const chess = new Chess();
+    for (const { move } of moves) {
+      chess.move(move);
+    }
+
+    g.fen = chess.fen();
+  }
+  return c.json(games);
+});
+
+app.get("/api/humans/", async c => {
+  const humans = db.query("SELECT id, name FROM humans").all();
+  return c.json(humans);
 });
 
 const port = parseInt(process.env.PORT) || 3000;
