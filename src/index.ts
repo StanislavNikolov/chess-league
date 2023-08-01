@@ -207,7 +207,8 @@ app.get("/api/live-games/", async c => {
     ORDER BY games.id DESC
     LIMIT 50
   `).all();
-  // Simulate each game to calculate its fen string
+
+  // Simulate each game to calculate its fen string.
   for (const g of games) {
     const moves = db.query('SELECT move FROM moves WHERE game_id = ?1 ORDER BY id').all(g.id);
 

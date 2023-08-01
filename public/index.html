@@ -4,6 +4,7 @@
     <style>
 body {
   margin: 0;
+  font-family: Verdana;
 }
 main {
   width: 100vw;
@@ -32,13 +33,13 @@ main {
 #upload-tile { grid-area: upl; }
 
 .tile {
-  display: inline-block;
-  font-family: Verdana;
   background-color: #f6eae0;
   padding: 8px;
   border-radius: 8px;
   color: #7a4e3c;
   box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+  display: flex;
+  flex-direction: column;
 }
 
 .leaderboard-item {
@@ -93,6 +94,10 @@ h2 {
   color: #ecc39f;
 }
 
+#human-list, #bot-list, #old-games {
+  overflow-y: auto
+}
+
 #live-games {
   display: grid;
   grid-gap: 20px;
@@ -102,6 +107,8 @@ h2 {
 .game {
   display: flex;
   justify-content: center;
+  margin-top: 10px;
+  border-bottom: 1px solid #eddfcc;
 }
 .bot {
   display: inline-block;
@@ -114,10 +121,77 @@ h2 {
 #timer {
   font-size: xxx-large;
 }
+button {
+  background-color: #9c8276;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  padding: 8px;
+  cursor: pointer;
+  margin-top: auto;
+  font-size: larger;
+  transition: 0.2s;
+}
+button:hover {
+  background-color: #79675f;
+}
+dialog {
+  background-color: #f6eae0;
+  border: 1px solid #9c8276;
+  border-radius: 4px;
+  box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+  width: 30rem;
+}
+dialog::backdrop {
+  -webkit-backdrop-filter: blur(5px); /* Safari needs this */
+  backdrop-filter: blur(5px);
+}
+dialog form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+dialog form input, textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 4px;
+  padding: 6px;
+  border: none;
+}
     </style>
   </head>
 
   <body>
+    <dialog>
+      <h2>Upload a new bot</h2>
+      <form>
+        <label>
+          <div>Your name</div>
+          <input type="text" placeholder="Will Smith"></input>
+        </label>
+        <label>
+          <div>Email</div>
+          <input type="email" placeholder="w.smith@example.com"></input>
+        </label>
+        <label>
+          <div>Bot name</div>
+          <input type="text" placeholder="Optimus Prime"></input>
+        </label>
+        <label>
+          <div>Code</div>
+          <textarea rows="10" placeholder="using ChessChallenge.API;
+
+public class MyBot : IChessBot
+{
+    public Move Think(Board board, ChessChallenge.API.Timer timer)
+    {
+        Move[] moves = board.GetLegalMoves();
+        ...
+"></textarea>
+        </label>
+        <button type="submit">Go!</button>
+      </form>
+    </dialog>
     <main>
       <div id="head-tile" class="tile">
         <br>
@@ -142,7 +216,9 @@ h2 {
         <div id="old-games"></div>
       </div>
       <div id="upload-tile" class="tile">
-        <h2>Upload Your Bot</h2> </div>
+        <h2>Your Bots</h2>
+        <button id="open-upload-dialog">Upload MyBot.cs</button>
+      </div>
     </main>
 
     <script type="module" src="/public/chessboard-element@1.2.0.bundled.mjs"></script>
@@ -259,9 +335,14 @@ h2 {
         })
       };
 
-      setInterval(updateLiveGames, 100);
+      setInterval(updateLiveGames, 500);
 
       $("#timer").innerHTML = ((new Date('2023-10-01') - new Date()) / (1000 * 60 * 60 * 24)).toFixed(0);
+
+
+      $("#open-upload-dialog").addEventListener("click", () => {
+        $("dialog").showModal();
+      });
     </script>
   </body>
 </html>
