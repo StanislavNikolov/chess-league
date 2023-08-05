@@ -26,7 +26,7 @@ export class Arena {
   board: Chess;
   moveTimeoutId: Timer;
 
-  constructor(wid: number, bid: number, initial_time_ms: number = 6 * 1000) {
+  constructor(wid: number, bid: number, initial_time_ms: number = 60 * 1000) {
     const query = db.query("SELECT hash FROM bots WHERE id=?1");
     const whash = query.get(wid)?.hash;
     const bhash = query.get(bid)?.hash;
@@ -152,5 +152,34 @@ export class Arena {
 
     Bun.spawn(["rm", "-rf", this.tmpdir]);
     console.log('endGame', { winner, reason });
+  }
+}
+
+function pickRandomBot(): number {
+  // Bots that have played FEWER games have a HIGHER chance to be picked.
+
+  const stats = db.query(`
+    SELECT bots.id, COUNT(*) AS cnt FROM bots
+    FULL JOIN games ON games.wid = bots.id OR games.bid = bots.id
+    GROUP BY bots.id
+    ORDER BY cnt
+  `).all() as { id: number, cnt: number }[];
+
+  const weightSum = stats.reduce((tot, curr) => tot + 1 / curr.cnt, 0);
+  let prefSum = 0;
+  const random = Math.random() * weightSum;
+  for (const { id, cnt } of stats) {
+    prefSum += 1 / cnt;
+    if (prefSum >= random) return id;
+  }
+}
+
+export function makeArenaIfNeeded() {
+  const runningGames = db.query("SELECT COUNT(*) as c FROM games WHERE ended IS NULL").get().c;
+  if (runningGames < 4) {
+    const wid = pickRandomBot();
+    const bid = pickRandomBot();
+    console.log(`Starting game between ${wid} and ${bid}`);
+    new Arena(wid, bid).start();
   }
 }

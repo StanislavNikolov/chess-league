@@ -1,9 +1,8 @@
 High:
-  [2] - Autostart games where there are not enough live games.
   [2] - Finish the "your bots" page
 
 Mid:
-  [2] - Show bots uploaded by this user - maybe also login button?
+  [3] - maybe also add a login button?
   [3] - Add timer to live games.
   [2] - Add sandboxing for the dotnet process
   [4] - Some kind of captcha for uploading new bots
@@ -15,3 +14,4 @@ Low:
   - Add "fork me on github" ribbon
   - Add tracking with Umami
   - Maybe optimize with websockets?
+  - Automatically detect and cleanup "dead" games.

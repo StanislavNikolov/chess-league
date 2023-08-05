@@ -60,4 +60,7 @@ db.query(`
   );
 `).run();
 
+// Clean old games.
+db.query('DELETE FROM games WHERE ended IS NULL;').run();
+
 export { db };

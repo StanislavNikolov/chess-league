@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { logger } from 'hono/logger';
 import { serveStatic } from "hono/serve-static.bun";
 
-import { Arena } from "./arena";
+import { Arena, makeArenaIfNeeded } from "./arena";
 import { db } from "./db";
 import { makeTmpDir } from "./utils";
 
@@ -193,6 +193,8 @@ app.get("/api/humans/", async c => {
   `).all();
   return c.json(humans);
 });
+
+setInterval(makeArenaIfNeeded, 1000);
 
 const port = parseInt(process.env.PORT) || 3000;
 console.log(`Running at http://localhost:${port}`);
