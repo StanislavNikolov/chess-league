@@ -3,7 +3,7 @@ import { Chess } from "chess.js";
 import { Database } from "bun:sqlite";
 
 
-export function startGame(db: Database, gameId: number, dir: string, white_hash: string, black_hash: string) {
+export function startGame(db: Database, gameId: number, dir: string, wid: number, bid: number, white_hash: string, black_hash: string) {
   const chess = new Chess();
   console.log(chess.ascii());
 
@@ -16,8 +16,21 @@ export function startGame(db: Database, gameId: number, dir: string, white_hash:
   function endGame(winner: string, reason: string) {
     color2proc['w'].kill();
     color2proc['b'].kill();
+
+    // Record the game result
     db.query("UPDATE games SET ended = ?1, winner = ?2, reason = ?3 WHERE id = ?4")
       .run([new Date().toISOString(), winner, reason, gameId]);
+
+    // Calculate new elo - https://www.youtube.com/watch?v=AsYfbmp0To0
+    const eloQuery = db.query("SELECT coalesce(SUM(change), 0) AS elo FROM elo_updates WHERE bot_id = ?1");
+    const welo = eloQuery.get([wid]).elo;
+    const belo = eloQuery.get([bid]).elo;
+    const expectedScore = 1 / (1 + Math.pow(10, (welo - belo) / 400));
+    const actualScore = { 'w': 1.0, 'b': 0.0, 'd': 0.5 }[winner];
+
+    const eloUpdateQuery = db.query('INSERT INTO elo_updates (game_id, bot_id, change) VALUES (?,?,?)');
+    eloUpdateQuery.run([gameId, wid, -1 * 32 * (actualScore - expectedScore)]);
+    eloUpdateQuery.run([gameId, bid, +1 * 32 * (actualScore - expectedScore)]);
     console.log('endGame', { winner, reason });
   }
 

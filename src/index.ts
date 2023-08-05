@@ -56,6 +56,18 @@ db.query(`
   );
 `).run();
 
+db.query(`
+  CREATE TABLE IF NOT EXISTS elo_updates (
+    id INTEGER PRIMARY KEY,
+    game_id INTEGER,
+    bot_id INTEGER NOT NULL,
+    change INTEGER NOT NULL,
+    FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE,
+    FOREIGN KEY(bot_id) REFERENCES bots(id) ON DELETE CASCADE
+  );
+`).run();
+
+
 async function compile(code: string) {
   const dir = "../simplified"; // TODO - every execution should have its own dir.
 
@@ -107,16 +119,20 @@ async function addBotToLeague(code: string, name: string, humanId: number): Prom
   }
 
   // TODO should we make names or hashes unique?
-  db.query(`
+  const botId = db.query(`
     INSERT INTO bots (name, code, uploaded, hash, human_id)
     VALUES ($name, $code, $uploaded, $hash, $human_id)
-  `).run({
+    RETURNING id
+  `).get({
     $name: name,
     $code: code,
     $uploaded: new Date().toISOString(),
     $hash: res.hash,
     $human_id: humanId
-  });
+  }).id as number;
+
+  db.query(`INSERT INTO elo_updates (game_id, bot_id, change) VALUES (null, ?1, 1000)`)
+    .run([botId]);
 
   return { ok: true, msg: "" };
 }
@@ -184,14 +200,18 @@ app.post("/fight/:wid/:bid/", async (c) => {
     .query("INSERT INTO games (wid, bid, initial_time_ms) VALUES ($wid, $bid, 1000) RETURNING id")
     .get({ $wid: wid, $bid: bid }).id;
 
-  startGame(db, gameId, dir, whash, bhash);
+  startGame(db, gameId, dir, Number(wid), Number(bid), whash, bhash);
 
   return c.text('', 200);
 });
 
 app.get("/api/bots/", async c => {
-  const bots = db.query("SELECT id, name, uploaded FROM bots").all();
-  // console.log(bots);
+  const bots = db.query(`
+    SELECT bots.id, name, coalesce(SUM(change), 0) AS elo FROM bots
+    LEFT JOIN elo_updates ON elo_updates.bot_id = bots.id
+    GROUP BY bots.id
+    ORDER BY elo DESC
+  `).all();
   return c.json(bots);
 });
 
@@ -234,7 +254,17 @@ app.get("/api/live-games/", async c => {
 });
 
 app.get("/api/humans/", async c => {
-  const humans = db.query("SELECT id, name FROM humans").all();
+  const humans = db.query(`
+    SELECT humans.id, humans.name, MAX(b.elo) as elo FROM humans
+    JOIN (
+      SELECT bots.id, name, coalesce(SUM(change), 0) AS elo, human_id FROM bots
+      LEFT JOIN elo_updates ON elo_updates.bot_id = bots.id
+      GROUP BY bots.id
+      ORDER BY elo DESC
+    ) b ON b.human_id = humans.id
+    GROUP BY humans.id
+    ORDER BY elo DESC
+  `).all();
   return c.json(humans);
 });
 

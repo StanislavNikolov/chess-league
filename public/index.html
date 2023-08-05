@@ -76,6 +76,10 @@ main {
   width: 100%;
   height: 100%;
 }
+.elo {
+  margin-left: auto;
+  font-size: smaller;
+}
 
 
 h2 {
@@ -302,7 +306,7 @@ public class MyBot : IChessBot
         return element.innerHTML;
       }
 
-      function renderLeaderboardItem(place, name) {
+      function renderLeaderboardItem(place, name, elo) {
         const age = (Math.random() * 10).toFixed(0) + ' days';
 
         let icon = `<b>${place}</b>`
@@ -314,6 +318,7 @@ public class MyBot : IChessBot
           <div class="leaderboard-item">
             <span class="place">${icon}</span>
             <span>${sanitizeHTML(name)}</span>
+            <span class="elo">${elo.toFixed(0)} ELO</span>
           </div>
         `;
 
@@ -324,7 +329,7 @@ public class MyBot : IChessBot
       .then(bots => {
         let html = '';
         for(let i = 0;i < bots.length;i ++) {
-          html += renderLeaderboardItem(i+1, bots[i].name);
+          html += renderLeaderboardItem(i+1, bots[i].name, bots[i].elo);
         }
         $('#bot-list').innerHTML = html;
       })
@@ -334,7 +339,7 @@ public class MyBot : IChessBot
         .then(humans => {
           let html = '';
           for(let i = 0;i < humans.length;i ++) {
-            html += renderLeaderboardItem(i+1, humans[i].name);
+            html += renderLeaderboardItem(i+1, humans[i].name, humans[i].elo);
           }
           $('#human-list').innerHTML = html;
         })

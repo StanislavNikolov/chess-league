@@ -1,19 +1,17 @@
-Add upload UI.
+High:
+  [1] - Allow for more than fights between the same bots to happen at the same time.
+  [1] - Allow for more than 2 bots to be compiled at the same time.
+  [4] - Proper timers for the fight.
+  [2] - Autostart games where there are not enough live games.
+  [2] - Add loading bar while the bot is compiling.
+
+Mid:
   [2] - Show bots uploaded by this user - maybe also login button?
-
-
-UI:
   [3] - Add timer to live games.
+
+
+Low:
   [9] - Make a "game" page where you can analyze how long each bot thought for.
-
-
-Internal:
-  [1] - Allow for 2 bots to fight at the same time.
-  [1] - Allow for 2 bots to be compiled at the same time.
-  [5] - Elo rating for each bot.
-
-
-Misc:
   - Make the timer update if you leave the page open overnight.
   - [9] Login system - login with email link.
   - Add "fork me on github" ribbon
