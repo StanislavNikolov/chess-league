@@ -1,20 +1,12 @@
-import { tmpdir } from "node:os";
-import { mkdir } from "node:fs/promises";
-import { randomBytes } from "node:crypto";
 import { Chess } from "chess.js";
 
 import { Hono } from "hono";
 import { logger } from 'hono/logger';
 import { serveStatic } from "hono/serve-static.bun";
 
-import { startGame } from "./matchmaker";
+import { Arena } from "./arena";
 import { db } from "./db";
-
-
-function makeTmpDir() {
-  const rnd = randomBytes(16).toString('base64url');
-  return `${tmpdir()}/chess-${rnd}`;
-}
+import { makeTmpDir } from "./utils";
 
 async function compile(code: string) {
   // Copy the template project into a tmpdir.
@@ -93,21 +85,6 @@ async function addBotToLeague(code: string, name: string, humanId: number): Prom
   return { ok: true, msg: "" };
 }
 
-async function prepareDLLs(hash1: string, hash2: string): Promise<string> {
-  const dir = makeTmpDir();
-  await mkdir(dir, { recursive: true });
-
-  // Copy the actual dlls.
-  await Bun.write(Bun.file(`${dir}/${hash1}.dll`), Bun.file(`compiled/${hash1}.dll`));
-  await Bun.write(Bun.file(`${dir}/${hash2}.dll`), Bun.file(`compiled/${hash2}.dll`));
-
-  // Copy the runtimeconfig file that dotnet DEMANDS for some reason.
-  await Bun.write(Bun.file(`${dir}/${hash1}.runtimeconfig.json`), Bun.file(`runtimeconfig.json`));
-  await Bun.write(Bun.file(`${dir}/${hash2}.runtimeconfig.json`), Bun.file(`runtimeconfig.json`));
-
-  return dir;
-}
-
 const app = new Hono();
 
 app.use("/favicon.ico", serveStatic({ path: "./public/favicon.ico" }));
@@ -141,19 +118,13 @@ app.post("/api/upload/", async (c) => {
 
 app.post("/fight/:wid/:bid/", async (c) => {
   const { wid, bid } = c.req.param();
-  const query = db.query("SELECT hash FROM bots WHERE id=?1");
-  const whash = query.get(wid)?.hash;
-  const bhash = query.get(bid)?.hash;
 
-  if (!whash || !bhash) return c.text('', 400);
-
-  const dir = await prepareDLLs(whash, bhash);
-
-  const gameId = db
-    .query("INSERT INTO games (wid, bid, initial_time_ms) VALUES ($wid, $bid, 1000) RETURNING id")
-    .get({ $wid: wid, $bid: bid }).id;
-
-  startGame(db, gameId, dir, Number(wid), Number(bid), whash, bhash);
+  try {
+    const arena = new Arena(wid, bid);
+    arena.start();
+  } catch (e) {
+    return c.text('', 400);
+  }
 
   return c.text('', 200);
 });

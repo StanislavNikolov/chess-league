@@ -43,7 +43,8 @@ db.query(`
     id INTEGER PRIMARY KEY,
     game_id INTEGER NOT NULL,
     move TEXT NOT NULL,
-    ms_since_game_start NUMBER NOT NULL,
+    color TEXT NOT NULL,
+    time NUMBER NOT NULL,
     FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE
   );
 `).run();
