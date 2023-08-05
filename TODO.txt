@@ -1,0 +1,21 @@
+Add upload UI.
+  [2] - Show bots uploaded by this user - maybe also login button?
+
+
+UI:
+  [3] - Add timer to live games.
+  [9] - Make a "game" page where you can analyze how long each bot thought for.
+
+
+Internal:
+  [1] - Allow for 2 bots to fight at the same time.
+  [1] - Allow for 2 bots to be compiled at the same time.
+  [5] - Elo rating for each bot.
+
+
+Misc:
+  - Make the timer update if you leave the page open overnight.
+  - [9] Login system - login with email link.
+  - Add "fork me on github" ribbon
+  - Add tracking with Umami
+  - Maybe optimize with websockets?

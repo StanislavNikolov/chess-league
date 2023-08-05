@@ -56,11 +56,11 @@ db.query(`
   );
 `).run();
 
-async function compile(code: Blob) {
+async function compile(code: string) {
   const dir = "../simplified"; // TODO - every execution should have its own dir.
 
   const hasher = new Bun.CryptoHasher("sha256");
-  hasher.update(await code.text());
+  hasher.update(code);
   const hash = hasher.digest("base64url");
 
   // 1) Save the code to be compiled.
@@ -100,7 +100,7 @@ function addHumanIfNotExists(name: string, email: string): number {
   }
 }
 
-async function addBotToLeague(code: Blob, name: string, humanId: number): Promise<{ ok: bool, msg: string }> {
+async function addBotToLeague(code: string, name: string, humanId: number): Promise<{ ok: bool, msg: string }> {
   const res = await compile(code);
   if (!res.ok) {
     return { ok: false, msg: res.msg };
@@ -112,7 +112,7 @@ async function addBotToLeague(code: Blob, name: string, humanId: number): Promis
     VALUES ($name, $code, $uploaded, $hash, $human_id)
   `).run({
     $name: name,
-    $code: new Uint8Array(await code.arrayBuffer()), // ugh
+    $code: code,
     $uploaded: new Date().toISOString(),
     $hash: res.hash,
     $human_id: humanId
@@ -144,16 +144,27 @@ app.use("/", serveStatic({ path: "./public/index.html" }));
 app.use("/public/*", serveStatic({ root: "./" }));
 app.use('*', logger());
 
-app.post("/upload", async (c) => {
+app.post("/api/upload/", async (c) => {
   const body = await c.req.parseBody();
 
-  if (!(body.code instanceof Blob)) return c.text('Missing code', 401);
-  if (typeof body.botname !== 'string') return c.text('Missing botname', 401);
-  if (typeof body.humanname !== 'string') return c.text('Missing humanname', 401);
-  if (typeof body.email !== 'string') return c.text('Missing email', 401);
+  console.log(body)
+
+  // Browser formdata comes as a string, but curl -Fcode=@file comes as a blob
+  let code: string;
+  if (body.code instanceof Blob) {
+    code = await body.code.text();
+  } else if (typeof (body.code) === "string") {
+    code = body.code;
+  } else {
+    return c.text('Missing code', 400);
+  }
+
+  if (typeof body.botname !== 'string') return c.text('Missing botname', 400);
+  if (typeof body.humanname !== 'string') return c.text('Missing humanname', 400);
+  if (typeof body.email !== 'string') return c.text('Missing email', 400);
 
   const humanId = addHumanIfNotExists(body.humanname, body.email);
-  const { ok, msg } = await addBotToLeague(body.code, body.botname, humanId);
+  const { ok, msg } = await addBotToLeague(code, body.botname, humanId);
 
   // Is this abusing http status codes? Oh well...
   return c.text(msg, ok ? 200 : 400);

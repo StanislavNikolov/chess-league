@@ -1,34 +1,47 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
+html {
+  background: radial-gradient(circle at 50% 0%, rgba(247,232,211,1) 0%, rgba(218,190,164,1) 71%, rgba(154,130,118,1) 100%);
+    background-size: cover;
+}
 body {
   margin: 0;
   font-family: Verdana;
 }
 main {
   width: 100vw;
-  height: 100vh;
+  /* height: 100vh; */
   margin: 0;
   padding: 20px;
   box-sizing: border-box;
 
-  background: radial-gradient(circle at 50% 0%, rgba(247,232,211,1) 0%, rgba(218,190,164,1) 71%, rgba(154,130,118,1) 100%);
 
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  grid-template-rows: minmax(auto, 200px) 1fr 1fr 1fr;
   grid-gap: 20px;
+
+  grid-template-columns: 2fr 3fr 2fr;
+  grid-template-rows: minmax(auto, 200px) 1fr 1fr;
   grid-template-areas: 
-    "head head head head"
-    "hlead live live old"
-    "blead live live old"
-    "blead live live upl";
+    "head head head"
+    "hlead live old"
+    "blead live upl";
 }
 #head-tile { grid-area: head; }
-#human-leaderboard-tile { grid-area: hlead; }
-#bot-leaderboard-tile { grid-area: blead; }
-#old-games-tile { grid-area: old; }
+#human-leaderboard-tile {
+  grid-area: hlead;
+  max-height: 30rem;
+}
+#bot-leaderboard-tile {
+  grid-area: blead;
+  max-height: 30rem;
+}
+#old-games-tile {
+  grid-area: old;
+  max-height: 30rem;
+}
 #live-games-tile { grid-area: live; }
 #upload-tile { grid-area: upl; }
 
@@ -158,6 +171,56 @@ dialog form input, textarea {
   padding: 6px;
   border: none;
 }
+#compilation-message {
+    font-size: small;
+    color: black;
+    background: #9c827645;
+    padding: 4px;
+    border-radius: 4px;
+}
+.info-heading {
+  display: flex;
+  gap: 6px;
+  fill: #9c8276;
+  border-bottom: 1px solid #9c8276;
+}
+.info-heading img {
+  width: 1rem;
+}
+#compilation-message.hidden {
+  display: none;
+}
+
+@media only screen and (max-width: 1200px) {
+  main {
+
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: minmax(auto, 200px) 1fr 1fr 1fr;
+    grid-template-areas: 
+      "head head head"
+      "hlead live live"
+      "blead live live"
+      "old old upl";
+  }
+}
+@media only screen and (max-width: 800px) {
+  h2 {
+    font-size: large;
+  }
+  main {
+    padding: 10px;
+    grid-gap: 10px;
+    font-size: smaller;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 120px 1fr 1fr 1fr;
+    grid-template-areas: 
+      "head head"
+      "hlead blead"
+      "live live"
+      "old old"
+      "upl upl";
+  }
+}
     </style>
   </head>
 
@@ -167,19 +230,19 @@ dialog form input, textarea {
       <form>
         <label>
           <div>Your name</div>
-          <input type="text" placeholder="Will Smith"></input>
+          <input required name="humanname" type="text" placeholder="Will Smith"></input>
         </label>
         <label>
           <div>Email</div>
-          <input type="email" placeholder="w.smith@example.com"></input>
+          <input required name="email" type="email" placeholder="w.smith@example.com"></input>
         </label>
         <label>
           <div>Bot name</div>
-          <input type="text" placeholder="Optimus Prime"></input>
+          <input required name="botname" type="text" placeholder="Optimus Prime"></input>
         </label>
         <label>
           <div>Code</div>
-          <textarea rows="10" placeholder="using ChessChallenge.API;
+          <textarea required name="code" rows="10" placeholder="using ChessChallenge.API;
 
 public class MyBot : IChessBot
 {
@@ -190,6 +253,13 @@ public class MyBot : IChessBot
 "></textarea>
         </label>
         <button type="submit">Go!</button>
+        <div id="compilation-message">
+          <div class="info-heading">
+            <img src="/public/error.svg"></img>
+            Your code didn't compile. Here is the compilation message:
+          </div>
+          <code></code>
+        </div>
       </form>
     </dialog>
     <main>
@@ -341,7 +411,30 @@ public class MyBot : IChessBot
 
 
       $("#open-upload-dialog").addEventListener("click", () => {
+        $("#compilation-message").classList.toggle('hidden', true);
         $("dialog").showModal();
+      });
+
+      $("form").addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+
+        $('button[type="submit"]').classList.add("loading");
+
+        const formData = new FormData($("form"));
+        const req = await fetch("/api/upload/", {
+          method: "POST",
+          body: formData,
+        });
+        const resp = await req.text();
+
+        $('button[type="submit"]').classList.remove("loading");
+
+        if (req.ok) {
+          $("dialog").close();
+        } else {
+          $("#compilation-message").classList.toggle('hidden', false);
+          $("#compilation-message code").innerText = resp;
+        }
       });
     </script>
   </body>
