@@ -149,6 +149,10 @@ button {
   font-size: larger;
   transition: 0.2s;
 }
+button:disabled {
+  background-color: #79675f;
+  cursor: wait;
+}
 button:hover {
   background-color: #79675f;
 }
@@ -423,7 +427,7 @@ public class MyBot : IChessBot
       $("form").addEventListener("submit", async (ev) => {
         ev.preventDefault();
 
-        $('button[type="submit"]').classList.add("loading");
+        $('button[type="submit"]').disabled = true;
 
         const formData = new FormData($("form"));
         const req = await fetch("/api/upload/", {
@@ -432,7 +436,7 @@ public class MyBot : IChessBot
         });
         const resp = await req.text();
 
-        $('button[type="submit"]').classList.remove("loading");
+        $('button[type="submit"]').disabled = false;
 
         if (req.ok) {
           $("dialog").close();

@@ -1,11 +1,11 @@
 High:
   [4] - Proper timers for the fight.
   [2] - Autostart games where there are not enough live games.
-  [2] - Add loading bar while the bot is compiling.
 
 Mid:
   [2] - Show bots uploaded by this user - maybe also login button?
   [3] - Add timer to live games.
+  [2] - Add sandboxing for the dotnet process
 
 
 Low:
