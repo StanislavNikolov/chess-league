@@ -26,7 +26,7 @@ export class Arena {
   board: Chess;
   moveTimeoutId: Timer;
 
-  constructor(wid: number, bid: number, initial_time_ms: number = 60 * 1000) {
+  constructor(wid: number, bid: number, initial_time_ms: number = 6 * 1000) {
     const query = db.query("SELECT hash FROM bots WHERE id=?1");
     const whash = query.get(wid)?.hash;
     const bhash = query.get(bid)?.hash;
@@ -81,7 +81,7 @@ export class Arena {
     if (this.moveTimeoutId != null) {
       clearTimeout(this.moveTimeoutId);
     }
-    this.moveTimeoutId = setTimeout(() => this.#timeout, this.c2bi[col].time_ms + 1);
+    this.moveTimeoutId = setTimeout(() => this.#timeout(), this.c2bi[col].time_ms + 1);
 
     this.c2bi[col].proc.stdin.write(this.board.fen() + '\n');
   }
@@ -90,7 +90,7 @@ export class Arena {
     const color = this.board.turn();
     const other = color === 'w' ? 'b' : 'w';
     const fullname = color === 'w' ? 'White' : 'Black';
-    this.#endGame(other, `${fullname} timed out!`);
+    this.#endGame(other, `${fullname} timed out`);
   }
 
   #procWrote(color: 'w' | 'b', data: Buffer) {
@@ -98,7 +98,7 @@ export class Arena {
     const fullname = color === 'w' ? 'White' : 'Black';
 
     const move = data.toString();
-    console.log(`${color}: ${move}`);
+    // console.log(this.c2bi[color].time_ms, `${color}: ${move}`);
     if (this.board.turn() !== color) {
       return this.#endGame(other, `${fullname} made a move, but it wasn't on turn`);
     }
