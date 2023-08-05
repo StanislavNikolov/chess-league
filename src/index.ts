@@ -1,101 +1,57 @@
+import { tmpdir } from "node:os";
+import { mkdir } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
+import { Chess } from "chess.js";
+
 import { Hono } from "hono";
 import { logger } from 'hono/logger';
 import { serveStatic } from "hono/serve-static.bun";
-import { tmpdir } from "node:os";
-import { mkdir } from "node:fs/promises";
+
 import { startGame } from "./matchmaker";
-import { Chess } from "chess.js";
+import { db } from "./db";
 
-import { Database } from "bun:sqlite";
-const db = new Database("db.sqlite");
 
-db.query('PRAGMA foreign_keys = ON;').run();
-
-db.query(`
-  CREATE TABLE IF NOT EXISTS humans (
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE
-  );
-`).run();
-
-db.query(`
-  CREATE TABLE IF NOT EXISTS bots (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    code TEXT NOT NULL,
-    uploaded TEXT NOT NULL,
-    hash TEXT,
-    human_id INTEGER NOT NULL,
-    FOREIGN KEY(human_id) REFERENCES humans(id) ON DELETE CASCADE
-  );
-`).run();
-
-db.query(`
-  CREATE TABLE IF NOT EXISTS games (
-    id INTEGER PRIMARY KEY,
-    bid INTEGER NOT NULL,
-    wid INTEGER NOT NULL,
-    started TEXT,
-    ended TEXT,
-    winner VARCHAR(1),
-    initial_time_ms NUMBER NOT NULL,
-    reason TEXT,
-    FOREIGN KEY(wid) REFERENCES bots(id) ON DELETE CASCADE,
-    FOREIGN KEY(bid) REFERENCES bots(id) ON DELETE CASCADE
-  );
-`).run();
-
-db.query(`
-  CREATE TABLE IF NOT EXISTS moves (
-    id INTEGER PRIMARY KEY,
-    game_id INTEGER NOT NULL,
-    move TEXT NOT NULL,
-    ms_since_game_start NUMBER NOT NULL,
-    FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE
-  );
-`).run();
-
-db.query(`
-  CREATE TABLE IF NOT EXISTS elo_updates (
-    id INTEGER PRIMARY KEY,
-    game_id INTEGER,
-    bot_id INTEGER NOT NULL,
-    change INTEGER NOT NULL,
-    FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY(bot_id) REFERENCES bots(id) ON DELETE CASCADE
-  );
-`).run();
-
+function makeTmpDir() {
+  const rnd = randomBytes(16).toString('base64url');
+  return `${tmpdir()}/chess-${rnd}`;
+}
 
 async function compile(code: string) {
-  const dir = "../simplified"; // TODO - every execution should have its own dir.
+  // Copy the template project into a tmpdir.
+  const tmpdir = makeTmpDir();
+  const cp = Bun.spawn(["cp", "-r", "../simplified", tmpdir]);
+  await cp.exited;
+
+  // Save the code to be compiled.
+  await Bun.write(`${tmpdir}/MyBot.cs`, code);
+
+  // Run the compiler.
+  const dotnet = Bun.spawn(["dotnet", "publish", "-c", "Release"], { cwd: tmpdir });
+  await dotnet.exited;
+
+
+  if (dotnet.exitCode !== 0) {
+    // Delete the tmpdir.
+    const rm = Bun.spawn(["rm", "-rf", tmpdir]);
+    await rm.exited;
+
+    // TODO - is stderr needed?
+    const stdout = await new Response(dotnet.stdout).text();
+    return { ok: false, msg: stdout };
+  }
 
   const hasher = new Bun.CryptoHasher("sha256");
   hasher.update(code);
   const hash = hasher.digest("base64url");
 
-  // 1) Save the code to be compiled.
-  await Bun.write(`${dir}/MyBot.cs`, code);
-
-  // Clean up old compiled files.
-  const rm = Bun.spawn(["rm", "-rf", `${dir}/obj`, `${dir}/bin`]);
-  await rm.exited;
-
-  // Run the compiler.
-  const proc = Bun.spawn(["dotnet", "publish", "-c", "Release"], { cwd: dir });
-  await proc.exited;
-
-  if (proc.exitCode !== 0) {
-    // TODO - is stderr needed?
-    const stdout = await new Response(proc.stdout).text();
-    return { ok: false, msg: stdout };
-  }
-
   await Bun.write(
     Bun.file(`compiled/${hash}.dll`),
-    Bun.file(`${dir}/bin/Release/net7.0/Chess-Challenge.dll`),
+    Bun.file(`${tmpdir}/bin/Release/net7.0/Chess-Challenge.dll`),
   );
+
+  // Delete the tmpdir.
+  const rm = Bun.spawn(["rm", "-rf", tmpdir]);
+  await rm.exited;
 
   return { ok: true, msg: "", hash };
 }
@@ -138,8 +94,7 @@ async function addBotToLeague(code: string, name: string, humanId: number): Prom
 }
 
 async function prepareDLLs(hash1: string, hash2: string): Promise<string> {
-  // TODO this will not work if the same bots fight at the same time.
-  const dir = `${tmpdir()}/fight-${hash1}-${hash2}`;
+  const dir = makeTmpDir();
   await mkdir(dir, { recursive: true });
 
   // Copy the actual dlls.
@@ -162,8 +117,6 @@ app.use('*', logger());
 
 app.post("/api/upload/", async (c) => {
   const body = await c.req.parseBody();
-
-  console.log(body)
 
   // Browser formdata comes as a string, but curl -Fcode=@file comes as a blob
   let code: string;

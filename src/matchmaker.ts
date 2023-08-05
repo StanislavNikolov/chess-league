@@ -31,6 +31,8 @@ export function startGame(db: Database, gameId: number, dir: string, wid: number
     const eloUpdateQuery = db.query('INSERT INTO elo_updates (game_id, bot_id, change) VALUES (?,?,?)');
     eloUpdateQuery.run([gameId, wid, -1 * 32 * (actualScore - expectedScore)]);
     eloUpdateQuery.run([gameId, bid, +1 * 32 * (actualScore - expectedScore)]);
+
+    Bun.spawn(["rm", "-rf", dir]);
     console.log('endGame', { winner, reason });
   }
 

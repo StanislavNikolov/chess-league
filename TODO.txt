@@ -1,6 +1,4 @@
 High:
-  [1] - Allow for more than fights between the same bots to happen at the same time.
-  [1] - Allow for more than 2 bots to be compiled at the same time.
   [4] - Proper timers for the fight.
   [2] - Autostart games where there are not enough live games.
   [2] - Add loading bar while the bot is compiling.
