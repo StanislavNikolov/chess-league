@@ -24,6 +24,7 @@ export class Arena {
   lastMoveTime: Date;
   c2bi: Record<'w' | 'b', BotInstance>;
   board: Chess;
+  moveTimeoutId: Timer;
 
   constructor(wid: number, bid: number, initial_time_ms: number = 60 * 1000) {
     const query = db.query("SELECT hash FROM bots WHERE id=?1");
@@ -46,7 +47,8 @@ export class Arena {
 
   async start() {
     await this.#prepare();
-    this.#run();
+    db.query("UPDATE games SET started = ?1 WHERE id = ?2").run([new Date().toISOString(), this.gameId]);
+    this.#pokeAtTheBotThatIsOnTurn();
   }
 
   async #prepare() {
@@ -72,10 +74,23 @@ export class Arena {
     // color2proc['b'].proc.stderr.on('data', d => console.log('berr', d.toString()));
   }
 
-  #run() {
+  #pokeAtTheBotThatIsOnTurn() {
     this.lastMoveTime = new Date();
-    db.query("UPDATE games SET started = ?1 WHERE id = ?2").run([this.lastMoveTime.toISOString(), this.gameId]);
-    this.c2bi['w'].proc.stdin.write(this.board.fen() + '\n');
+    const col = this.board.turn();
+
+    if (this.moveTimeoutId != null) {
+      clearTimeout(this.moveTimeoutId);
+    }
+    this.moveTimeoutId = setTimeout(() => this.#timeout, this.c2bi[col].time_ms + 1);
+
+    this.c2bi[col].proc.stdin.write(this.board.fen() + '\n');
+  }
+
+  #timeout() {
+    const color = this.board.turn();
+    const other = color === 'w' ? 'b' : 'w';
+    const fullname = color === 'w' ? 'White' : 'Black';
+    this.#endGame(other, `${fullname} timed out!`);
   }
 
   #procWrote(color: 'w' | 'b', data: Buffer) {
@@ -85,7 +100,13 @@ export class Arena {
     const move = data.toString();
     console.log(`${color}: ${move}`);
     if (this.board.turn() !== color) {
-      this.#endGame(other, `${fullname} made a move, but it wasn't on turn`);
+      return this.#endGame(other, `${fullname} made a move, but it wasn't on turn`);
+    }
+
+    const moveTime: number = new Date().getTime() - this.lastMoveTime.getTime();
+    this.c2bi[color].time_ms -= moveTime;
+    if (this.c2bi[color].time_ms < 0) {
+      return this.#endGame(other, `${fullname} timed out`);
     }
 
     try {
@@ -94,11 +115,6 @@ export class Arena {
       // TODO test this
       return this.#endGame(other, `${fullname} made an illegal move: ${move}`);
     }
-
-    const currTime = new Date();
-    const moveTime: number = currTime.getTime() - this.lastMoveTime.getTime();
-    this.c2bi[color].time_ms -= moveTime;
-    this.lastMoveTime = currTime;
 
     db.query("INSERT INTO moves (game_id, move, color, time) VALUES (?1, ?2, ?3, ?4)")
       .run([this.gameId, move, color, moveTime]);
@@ -112,7 +128,7 @@ export class Arena {
       return this.#endGame('d', 'Unknown'); // This should not happen.
     }
 
-    this.c2bi[other].proc.stdin.write(this.board.fen() + '\n');
+    this.#pokeAtTheBotThatIsOnTurn();
   }
 
   #endGame(winner: string, reason: string) {
@@ -131,8 +147,8 @@ export class Arena {
     const actualScore = { 'w': 1.0, 'b': 0.0, 'd': 0.5 }[winner];
 
     const eloUpdateQuery = db.query('INSERT INTO elo_updates (game_id, bot_id, change) VALUES (?,?,?)');
-    eloUpdateQuery.run([this.gameId, this.c2bi['w'].db_id, -1 * 32 * (actualScore - expectedScore)]);
-    eloUpdateQuery.run([this.gameId, this.c2bi['b'].db_id, +1 * 32 * (actualScore - expectedScore)]);
+    eloUpdateQuery.run([this.gameId, this.c2bi['w'].db_id, +1 * 32 * (actualScore - expectedScore)]);
+    eloUpdateQuery.run([this.gameId, this.c2bi['b'].db_id, -1 * 32 * (actualScore - expectedScore)]);
 
     Bun.spawn(["rm", "-rf", this.tmpdir]);
     console.log('endGame', { winner, reason });

@@ -21,7 +21,6 @@ async function compile(code: string) {
   const dotnet = Bun.spawn(["dotnet", "publish", "-c", "Release"], { cwd: tmpdir });
   await dotnet.exited;
 
-
   if (dotnet.exitCode !== 0) {
     // Delete the tmpdir.
     const rm = Bun.spawn(["rm", "-rf", tmpdir]);
@@ -165,14 +164,17 @@ app.get("/api/live-games/", async c => {
 
   // Simulate each game to calculate its fen string.
   for (const g of games) {
-    const moves = db.query('SELECT move FROM moves WHERE game_id = ?1 ORDER BY id').all(g.id);
+    const moves = db.query('SELECT move, color, time FROM moves WHERE game_id = ?1 ORDER BY id').all(g.id);
 
     const chess = new Chess();
-    for (const { move } of moves) {
-      chess.move(move);
+    const totalTime = { 'w': 0, 'b': 0 };
+    for (const move of moves) {
+      chess.move(move.move);
+      totalTime[move.color] += move.time;
     }
 
     g.fen = chess.fen();
+    g.totalTime = totalTime;
   }
   return c.json(games);
 });
