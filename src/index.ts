@@ -37,7 +37,7 @@ async function compile(code: string) {
 
   await Bun.write(
     Bun.file(`compiled/${hash}.dll`),
-    Bun.file(`${tmpdir}/bin/Release/net7.0/Chess-Challenge.dll`),
+    Bun.file(`${tmpdir}/bin/Release/net6.0/Chess-Challenge.dll`),
   );
 
   // Delete the tmpdir.
