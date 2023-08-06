@@ -159,7 +159,7 @@ function pickRandomBot(): number {
 
   const stats = db.query(`
     SELECT bots.id, COUNT(*) AS cnt FROM bots
-    FULL JOIN games ON games.wid = bots.id OR games.bid = bots.id
+    LEFT JOIN games ON games.wid = bots.id OR games.bid = bots.id
     GROUP BY bots.id
     ORDER BY cnt
   `).all() as { id: number, cnt: number }[];
