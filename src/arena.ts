@@ -98,7 +98,6 @@ export class Arena {
     const fullname = color === 'w' ? 'White' : 'Black';
 
     const move = data.toString();
-    // console.log(this.c2bi[color].time_ms, `${color}: ${move}`);
     if (this.board.turn() !== color) {
       return this.#endGame(other, `${fullname} made a move, but it wasn't on turn`);
     }
@@ -143,7 +142,7 @@ export class Arena {
     const eloQuery = db.query("SELECT coalesce(SUM(change), 0) AS elo FROM elo_updates WHERE bot_id = ?1");
     const welo = eloQuery.get([this.c2bi['w'].db_id]).elo;
     const belo = eloQuery.get([this.c2bi['b'].db_id]).elo;
-    const expectedScore = 1 / (1 + Math.pow(10, (welo - belo) / 400));
+    const expectedScore = 1 / (1 + Math.pow(10, (belo - welo) / 400));
     const actualScore = { 'w': 1.0, 'b': 0.0, 'd': 0.5 }[winner];
 
     const eloUpdateQuery = db.query('INSERT INTO elo_updates (game_id, bot_id, change) VALUES (?,?,?)');
@@ -151,7 +150,7 @@ export class Arena {
     eloUpdateQuery.run([this.gameId, this.c2bi['b'].db_id, -1 * 32 * (actualScore - expectedScore)]);
 
     Bun.spawn(["rm", "-rf", this.tmpdir]);
-    console.log('endGame', { winner, reason });
+    console.log(`Game ${this.gameId} won by ${winner} - ${reason}`);
   }
 }
 
@@ -175,10 +174,12 @@ function pickRandomBot(): number {
 }
 
 export function makeArenaIfNeeded() {
-  const runningGames = db.query("SELECT COUNT(*) as c FROM games WHERE ended IS NULL").get().c;
-  if (runningGames < 4) {
+  let runningGames = db.query("SELECT COUNT(*) as c FROM games WHERE ended IS NULL").get().c;
+  for (; runningGames < 4; runningGames++) {
     const wid = pickRandomBot();
     const bid = pickRandomBot();
+    if (wid == null || bid == null) return;
+    if (wid === bid) return;
     console.log(`Starting game between ${wid} and ${bid}`);
     new Arena(wid, bid).start();
   }

@@ -328,25 +328,33 @@ public class MyBot : IChessBot
 
       }
 
-      fetch('/api/bots/')
-      .then(req => req.json())
-      .then(bots => {
-        let html = '';
-        for(let i = 0;i < bots.length;i ++) {
-          html += renderLeaderboardItem(i+1, bots[i].name, bots[i].elo);
-        }
-        $('#bot-list').innerHTML = html;
-      })
-
-      fetch('/api/humans/')
+      function updateBotLeaderboard() {
+        fetch('/api/bots/')
         .then(req => req.json())
-        .then(humans => {
+        .then(bots => {
           let html = '';
-          for(let i = 0;i < humans.length;i ++) {
-            html += renderLeaderboardItem(i+1, humans[i].name, humans[i].elo);
+          for(let i = 0;i < bots.length;i ++) {
+            html += renderLeaderboardItem(i+1, bots[i].name, bots[i].elo);
           }
-          $('#human-list').innerHTML = html;
-        })
+          $('#bot-list').innerHTML = html;
+        });
+
+        setTimeout(updateBotLeaderboard, 2000);
+      }
+
+      function updateHumanLeaderboard() {
+        fetch('/api/humans/')
+          .then(req => req.json())
+          .then(humans => {
+            let html = '';
+            for(let i = 0;i < humans.length;i ++) {
+              html += renderLeaderboardItem(i+1, humans[i].name, humans[i].elo);
+            }
+            $('#human-list').innerHTML = html;
+          });
+
+          setTimeout(updateHumanLeaderboard, 2000);
+      }
 
       function renderGame(g) {
         return `
@@ -363,15 +371,19 @@ public class MyBot : IChessBot
         `;
       }
 
-      fetch('/api/old-games/')
-      .then(req => req.json())
-      .then(games => {
-        let html = '';
-        for(const g of games) {
-          html += renderGame(g);
-        }
-        $('#old-games').innerHTML = html;
-      });
+      function updateOldGames() {
+        fetch('/api/old-games/')
+        .then(req => req.json())
+        .then(games => {
+          let html = '';
+          for(const g of games) {
+            html += renderGame(g);
+          }
+          $('#old-games').innerHTML = html;
+        });
+
+        setTimeout(updateOldGames, 2000);
+      }
 
       function renderLiveGame(g) {
         return `
@@ -385,7 +397,6 @@ public class MyBot : IChessBot
         `;
       }
 
-      
       function updateLiveGames() {
         fetch('/api/live-games/')
         .then(req => req.json())
@@ -411,10 +422,15 @@ public class MyBot : IChessBot
             console.log(cb.shadowRoot.querySelector('#dragged-pieces'));
             cb.shadowRoot.querySelector('#dragged-pieces')?.remove();
           }
-        })
+        });
+
+        setTimeout(updateLiveGames, 500);
       };
 
-      setInterval(updateLiveGames, 500);
+      updateLiveGames();
+      updateBotLeaderboard();
+      updateHumanLeaderboard();
+      updateOldGames();
 
       $("#timer").innerHTML = ((new Date('2023-10-01') - new Date()) / (1000 * 60 * 60 * 24)).toFixed(0);
 

@@ -2,10 +2,12 @@ High:
   [2] - Finish the "your bots" page
 
 Mid:
+  [4] - The database grows very large very quickly. Find a way to compress it.
   [3] - maybe also add a login button?
   [3] - Add timer to live games.
   [2] - Add sandboxing for the dotnet process
   [4] - Some kind of captcha for uploading new bots
+  [2] - Add animation when live games "die"
 
 
 Low:

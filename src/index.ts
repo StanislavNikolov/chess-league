@@ -11,7 +11,7 @@ import { makeTmpDir } from "./utils";
 async function compile(code: string) {
   // Copy the template project into a tmpdir.
   const tmpdir = makeTmpDir();
-  const cp = Bun.spawn(["cp", "-r", "../simplified", tmpdir]);
+  const cp = Bun.spawn(["cp", "-r", "./bot-scaffold", tmpdir]);
   await cp.exited;
 
   // Save the code to be compiled.
@@ -89,7 +89,13 @@ const app = new Hono();
 app.use("/favicon.ico", serveStatic({ path: "./public/favicon.ico" }));
 app.use("/", serveStatic({ path: "./public/index.html" }));
 app.use("/public/*", serveStatic({ root: "./" }));
-app.use('*', logger());
+
+app.use("*", async (c, next) => {
+  const begin = performance.now();
+  await next();
+  // console.log(c);
+  console.log(`${c.req.method} ${c.req.url} - ${c.res.status} ${(performance.now() - begin).toFixed(1)}ms`);
+})
 
 app.post("/api/upload/", async (c) => {
   const body = await c.req.parseBody();
