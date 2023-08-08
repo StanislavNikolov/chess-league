@@ -127,7 +127,7 @@ app.get("/api/live-games/", async c => {
     FROM games
     JOIN bots AS w ON w.id = wid
     JOIN bots AS b ON b.id = bid
-    WHERE winner IS NULL
+    WHERE winner IS NULL AND initial_position IS NOT NULL
     ORDER BY games.id DESC
     LIMIT 50
   `).all();

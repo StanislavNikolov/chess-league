@@ -17,9 +17,13 @@ Low:
   - Maybe optimize with websockets?
 
 
-Requested by users:
+Requested by other devs:
 - Lite Blue:
   1) Doesn't seem like I can see my bots in the Your Bots section
   2) Rename Human Leaderboard to Dev Leaderboard
   3) Add ability to edit Bot and User data
-  4) I would recommend using an opening book for the games so that engines don't keep playing the same game over and over again
+
+- Skolin
+  1) the games are sometimes hard to watch when the board jumps. maybe make it
+  so a new game is put into the place where the old game ended, instead of
+  moving all the games up?
