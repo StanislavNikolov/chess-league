@@ -77,13 +77,20 @@ export class Arena {
   #pokeAtTheBotThatIsOnTurn() {
     this.lastMoveTime = new Date();
     const col = this.board.turn();
+    const other = col === 'w' ? 'b' : 'w';
+    const fullname = col === 'w' ? 'White' : 'Black';
 
     if (this.moveTimeoutId != null) {
       clearTimeout(this.moveTimeoutId);
     }
     this.moveTimeoutId = setTimeout(() => this.#timeout(), this.c2bi[col].time_ms + 1);
 
-    this.c2bi[col].proc.stdin.write(this.board.fen() + '\n');
+    const timerString = `${this.c2bi[col].time_ms} ${this.c2bi[other].time_ms} ${this.initial_time_ms}`;
+    try {
+      this.c2bi[col].proc.stdin.write(this.board.fen() + '\n' + timerString + '\n');
+    } catch (e) {
+      this.#endGame(other, `${fullname} kicked to bucket early (crashed)`);
+    }
   }
 
   #timeout() {

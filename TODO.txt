@@ -15,3 +15,11 @@ Low:
   - Make the timer update if you leave the page open overnight.
   - Add "fork me on github" ribbon
   - Maybe optimize with websockets?
+
+
+Requested by users:
+- Lite Blue:
+  1) Doesn't seem like I can see my bots in the Your Bots section
+  2) Rename Human Leaderboard to Dev Leaderboard
+  3) Add ability to edit Bot and User data
+  4) I would recommend using an opening book for the games so that engines don't keep playing the same game over and over again
