@@ -389,11 +389,11 @@ public class MyBot : IChessBot
       function renderLiveGame(g) {
         return `
           <div data-game-id=${g.id}>
-            <div>${sanitizeHTML(g.wname)}</div>
+            <div>${sanitizeHTML(g.bname)}</div>
             <br>
             <chess-board position=${g.fen}></chess-board>
             <br>
-            <div>${sanitizeHTML(g.bname)}</div>
+            <div>${sanitizeHTML(g.wname)}</div>
           </div>
         `;
       }
