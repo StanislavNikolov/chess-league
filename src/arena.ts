@@ -70,8 +70,8 @@ export class Arena {
     this.c2bi['w'].proc.stdout.on('data', (data: Buffer) => this.#procWrote('w', data));
     this.c2bi['b'].proc.stdout.on('data', (data: Buffer) => this.#procWrote('b', data));
 
-    // color2proc['w'].proc.stderr.on('data', d => console.log('werr', d.toString()));
-    // color2proc['b'].proc.stderr.on('data', d => console.log('berr', d.toString()));
+    this.c2bi['w'].proc.stderr.on('data', d => console.log('werr', d.toString()));
+    this.c2bi['b'].proc.stderr.on('data', d => console.log('berr', d.toString()));
   }
 
   #pokeAtTheBotThatIsOnTurn() {
@@ -133,6 +133,10 @@ export class Arena {
   #endGame(winner: string, reason: string) {
     this.c2bi['w'].proc.kill();
     this.c2bi['b'].proc.kill();
+
+    if (this.moveTimeoutId != null) {
+      clearTimeout(this.moveTimeoutId);
+    }
 
     // Record the game result
     db.query("UPDATE games SET ended = ?1, winner = ?2, reason = ?3 WHERE id = ?4")

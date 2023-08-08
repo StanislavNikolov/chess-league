@@ -1,7 +1,6 @@
 import { Chess } from "chess.js";
 
 import { Hono } from "hono";
-import { logger } from 'hono/logger';
 import { serveStatic } from "hono/serve-static.bun";
 
 import { Arena, makeArenaIfNeeded } from "./arena";
@@ -9,25 +8,35 @@ import { db } from "./db";
 import { makeTmpDir } from "./utils";
 
 async function compile(code: string) {
+  console.log("Starting compile");
   // Copy the template project into a tmpdir.
   const tmpdir = makeTmpDir();
   const cp = Bun.spawn(["cp", "-r", "./bot-scaffold", tmpdir]);
   await cp.exited;
 
+  // Fix common compilation errors.
+  code = code.replaceAll(" Timer ", "ChessChallenge.API.Timer ");
+  code = code.replaceAll(",Timer ", "ChessChallenge.API.Timer ");
+
   // Save the code to be compiled.
   await Bun.write(`${tmpdir}/MyBot.cs`, code);
 
   // Run the compiler.
-  const dotnet = Bun.spawn(["dotnet", "publish", "-c", "Release"], { cwd: tmpdir });
+  // There seems to be a bug in bun, and using the default proc.stdout, which
+  // is a readble stream, simply hangs. This is a workaround.
+  const dotnet = Bun.spawn(["dotnet", "publish", "-c", "Release"], {
+    cwd: tmpdir,
+    stdout: Bun.file(`${tmpdir}/log.txt`),
+  });
   await dotnet.exited;
+  const stdout = await Bun.file(`${tmpdir}/log.txt`).text();
+
+  console.log("Compilation done", dotnet.exitCode);
 
   if (dotnet.exitCode !== 0) {
     // Delete the tmpdir.
     const rm = Bun.spawn(["rm", "-rf", tmpdir]);
     await rm.exited;
-
-    // TODO - is stderr needed?
-    const stdout = await new Response(dotnet.stdout).text();
     return { ok: false, msg: stdout };
   }
 
@@ -93,8 +102,11 @@ app.use("/public/*", serveStatic({ root: "./" }));
 app.use("*", async (c, next) => {
   const begin = performance.now();
   await next();
-  // console.log(c);
-  console.log(`${c.req.method} ${c.req.url} - ${c.res.status} ${(performance.now() - begin).toFixed(1)}ms`);
+  const ms = (performance.now() - begin).toFixed(1);
+  const statusColor = c.res.status === 200 ? "\x1b[32m" : "\x1b[36m";
+  const msColor = ms < 40 ? "\x1b[32m" : "\x1b[36m";
+  const reset = "\x1b[0m";
+  console.log(`${new Date().toISOString()} ${msColor}${ms}ms${reset}\t${statusColor}${c.res.status}${reset} ${c.req.method} ${c.req.url}`);
 })
 
 app.post("/api/upload/", async (c) => {
@@ -114,6 +126,7 @@ app.post("/api/upload/", async (c) => {
   if (typeof body.humanname !== 'string') return c.text('Missing humanname', 400);
   if (typeof body.email !== 'string') return c.text('Missing email', 400);
 
+  console.log("Starting upload", body.humanname, body.email);
   const humanId = addHumanIfNotExists(body.humanname, body.email);
   const { ok, msg } = await addBotToLeague(code, body.botname, humanId);
 
