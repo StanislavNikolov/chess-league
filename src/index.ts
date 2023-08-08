@@ -115,7 +115,7 @@ app.get("/api/old-games/", async c => {
     JOIN bots AS w ON w.id = wid
     JOIN bots AS b ON b.id = bid
     WHERE winner IS NOT NULL
-    ORDER BY games.id DESC
+    ORDER BY ended DESC
     LIMIT 50
   `).all();
   return c.json(games);
