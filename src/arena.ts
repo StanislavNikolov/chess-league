@@ -14,6 +14,12 @@ class BotInstance {
   }
 };
 
+function getElo(botId: number): number {
+  return db
+    .query("SELECT coalesce(SUM(change), 0) AS elo FROM elo_updates WHERE bot_id = ?1")
+    .get(botId).elo;
+}
+
 
 /*
  * This class menages the the bot processes and the database records needed to follow the game live.
@@ -155,9 +161,8 @@ export class Arena {
       .run([new Date().toISOString(), winner, reason, this.gameId]);
 
     // Calculate new elo - https://www.youtube.com/watch?v=AsYfbmp0To0
-    const eloQuery = db.query("SELECT coalesce(SUM(change), 0) AS elo FROM elo_updates WHERE bot_id = ?1");
-    const welo = eloQuery.get([this.c2bi['w'].db_id]).elo;
-    const belo = eloQuery.get([this.c2bi['b'].db_id]).elo;
+    const welo = getElo([this.c2bi['w'].db_id]);
+    const belo = getElo([this.c2bi['b'].db_id]);
     const expectedScore = 1 / (1 + Math.pow(10, (belo - welo) / 400));
     const actualScore = { 'w': 1.0, 'b': 0.0, 'd': 0.5 }[winner];
 
@@ -170,7 +175,7 @@ export class Arena {
   }
 }
 
-function pickRandomBot(): number {
+function pickBotByNumberOfGamesPlayed(): number {
   // Bots that have played FEWER games have a HIGHER chance to be picked.
 
   const stats = db.query(`
@@ -189,14 +194,69 @@ function pickRandomBot(): number {
   }
 }
 
+function pickBotThatHasCloseElo(otherBotId: number): number {
+  // Bots that have elo that is CLOSE to otherBotId have MORE chance to be picked up.
+  const otherElo = getElo(otherBotId);
+  const stats = db.query(`
+    SELECT bot_id, coalesce(SUM(change), 0) AS elo
+    FROM elo_updates WHERE bot_id != ?1
+    GROUP BY bot_id
+  `).all([otherBotId]) as { bot_id: number, elo: number }[];
+
+  const calcWeight = (elo: number) => 1 / Math.pow(Math.abs(elo - otherElo), 0.5);
+
+  const weightSum = stats.reduce((tot, curr) => tot + calcWeight(curr.elo), 0);
+  let prefSum = 0;
+  const random = Math.random() * weightSum;
+  for (const { bot_id, elo } of stats) {
+    prefSum += calcWeight(elo);
+    if (prefSum >= random) return bot_id;
+  }
+}
+
+/*
+ * Uncomment for debugging.
+function testArenaAlgo() {
+  for (let i = 0; i < 1000; i++) {
+    let id1 = pickBotByNumberOfGamesPlayed();
+    if (id1 == null) return;
+
+    let id2 = pickBotThatHasCloseElo(id1);
+    if (id2 == null) return;
+
+    if (id1 == id2) return;
+
+    if (Math.random() > 0.5) [id1, id2] = [id2, id1];
+
+    const dbq = db.query(`
+      SELECT name, SUM(change) as elo
+      FROM bots
+      JOIN elo_updates ON elo_updates.bot_id = bots.id
+      WHERE bots.id = ?1
+    `);
+    const s1 = dbq.get(id1);
+    const s2 = dbq.get(id2);
+    console.log(`Starting game between ${s1.name}(${id1}-${s1.elo?.toFixed(0)}) and ${s2.name}(${id2}-${s2.elo?.toFixed(0)})`);
+  }
+}
+
+testArenaAlgo();
+*/
+
 export function makeArenaIfNeeded() {
   let runningGames = db.query("SELECT COUNT(*) as c FROM games WHERE ended IS NULL").get().c;
   for (; runningGames < 4; runningGames++) {
-    const wid = pickRandomBot();
-    const bid = pickRandomBot();
-    if (wid == null || bid == null) return;
-    if (wid === bid) return;
-    console.log(`Starting game between ${wid} and ${bid}`);
-    new Arena(wid, bid).start();
+    let id1 = pickBotByNumberOfGamesPlayed();
+    if (id1 == null) return;
+
+    let id2 = pickBotThatHasCloseElo(id1);
+    if (id2 == null) return;
+
+    if (id1 == id2) return;
+
+    if (Math.random() > 0.5) [id1, id2] = [id2, id1];
+
+    console.log(`Starting game between ${id1} and ${id2}`);
+    new Arena(id1, id2).start();
   }
 }
