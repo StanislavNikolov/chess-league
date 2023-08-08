@@ -1,29 +1,18 @@
 High:
-  [2] - Finish the "your bots" page
+  [2] - Skolin: Fix the flickering when the live games change.
+  [5] - Login system - send a special link to the email
+  [3] - Lite Blue: Finish the "your bots" page - add button to decommision bot
 
 Mid:
-  [4] - The database grows very large very quickly. Find a way to compress it.
-  [3] - maybe also add a login button?
   [3] - Add timer to live games.
+  [3] - Add token count to each bot in the db
   [2] - Add sandboxing for the dotnet process
-  [4] - Some kind of captcha for uploading new bots
   [2] - Add animation when live games "die"
+  [9] - Make a "game" page where you can analyze how long each bot thought for.
 
 
 Low:
-  [9] - Make a "game" page where you can analyze how long each bot thought for.
+  [4] - Some kind of captcha for uploading new bots
   - Make the timer update if you leave the page open overnight.
   - Add "fork me on github" ribbon
   - Maybe optimize with websockets?
-
-
-Requested by other devs:
-- Lite Blue:
-  1) Doesn't seem like I can see my bots in the Your Bots section
-  2) Rename Human Leaderboard to Dev Leaderboard
-  3) Add ability to edit Bot and User data
-
-- Skolin
-  1) the games are sometimes hard to watch when the board jumps. maybe make it
-  so a new game is put into the place where the old game ended, instead of
-  moving all the games up?
