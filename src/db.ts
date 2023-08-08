@@ -32,6 +32,7 @@ db.query(`
     ended TEXT,
     winner VARCHAR(1),
     initial_time_ms NUMBER NOT NULL,
+    initial_position TEXT,
     reason TEXT,
     FOREIGN KEY(wid) REFERENCES bots(id) ON DELETE CASCADE,
     FOREIGN KEY(bid) REFERENCES bots(id) ON DELETE CASCADE

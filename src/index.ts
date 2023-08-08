@@ -123,7 +123,7 @@ app.get("/api/old-games/", async c => {
 
 app.get("/api/live-games/", async c => {
   const games = db.query(`
-    SELECT games.id, wid, bid, w.name as wname, b.name as bname, started, ended, winner
+    SELECT games.id, initial_position, wid, bid, w.name as wname, b.name as bname, started, ended, winner
     FROM games
     JOIN bots AS w ON w.id = wid
     JOIN bots AS b ON b.id = bid
@@ -136,7 +136,7 @@ app.get("/api/live-games/", async c => {
   for (const g of games) {
     const moves = db.query('SELECT move, color, time FROM moves WHERE game_id = ?1 ORDER BY id').all(g.id);
 
-    const chess = new Chess();
+    const chess = new Chess(g.initial_position);
     const totalTime = { 'w': 0, 'b': 0 };
     for (const move of moves) {
       chess.move(move.move);

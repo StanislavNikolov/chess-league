@@ -14,6 +14,7 @@ class BotInstance {
   }
 };
 
+
 /*
  * This class menages the the bot processes and the database records needed to follow the game live.
  */
@@ -38,7 +39,7 @@ export class Arena {
       .get([wid, bid, initial_time_ms]).id;
 
     this.initial_time_ms = initial_time_ms;
-    this.board = new Chess();
+
     this.c2bi = {
       'w': new BotInstance(wid, whash, initial_time_ms),
       'b': new BotInstance(bid, bhash, initial_time_ms),
@@ -46,8 +47,12 @@ export class Arena {
   }
 
   async start() {
+    const fens = (await Bun.file('./fens.txt').text()).split('\n');
+    const fen = fens[Math.floor(Math.random() * fens.length)];
+    this.board = new Chess(fen);
+
     await this.#prepare();
-    db.query("UPDATE games SET started = ?1 WHERE id = ?2").run([new Date().toISOString(), this.gameId]);
+    db.query("UPDATE games SET started = ?1, initial_position = ?2 WHERE id = ?3").run([new Date().toISOString(), fen, this.gameId]);
     this.#pokeAtTheBotThatIsOnTurn();
   }
 
