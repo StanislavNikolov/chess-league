@@ -1,5 +1,4 @@
 High:
-  [2] - Skolin: Fix the flickering when the live games change.
   [5] - Login system - send a special link to the email
   [3] - Lite Blue: Finish the "your bots" page - add button to decommision bot
 
