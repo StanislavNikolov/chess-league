@@ -130,7 +130,7 @@ export class Arena {
       if (this.board.isInsufficientMaterial()) return this.#endGame('d', 'Insufficient Material');
       if (this.board.isThreefoldRepetition()) return this.#endGame('d', 'Threefold Repetition');
       if (this.board.isDraw()) return this.#endGame('d', '50 move rule');
-      if (this.board.isCheckmate()) return this.#endGame(other, 'Checkmate');
+      if (this.board.isCheckmate()) return this.#endGame(color, 'Checkmate');
       return this.#endGame('d', 'Unknown'); // This should not happen.
     }
 
