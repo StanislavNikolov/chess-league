@@ -394,11 +394,11 @@ public class MyBot : IChessBot
       function renderLiveGame(g) {
         return `
           <div data-game-id=${g.id} class="live-game">
-            <div>${sanitizeHTML(g.bname)}</div>
+            <div class="bname">${sanitizeHTML(g.bname)}</div>
             <br>
             <chess-board position=${g.fen}></chess-board>
             <br>
-            <div>${sanitizeHTML(g.wname)}</div>
+            <div class="wname">${sanitizeHTML(g.wname)}</div>
           </div>
         `;
       }
@@ -425,6 +425,8 @@ public class MyBot : IChessBot
             if (candidate) {
               candidate.setAttribute("data-game-id", g.id);
               candidate.querySelector("chess-board").setPosition(g.fen);
+              candidate.querySelector(".wname").innerText = g.wname;
+              candidate.querySelector(".bname").innerText = g.bname;
               continue;
             }
 
