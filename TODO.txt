@@ -7,7 +7,6 @@ Mid:
   [3] - Add token count to each bot in the db
   [2] - Add sandboxing for the dotnet process
   [2] - Add animation when live games "die"
-  [9] - Make a "game" page where you can analyze how long each bot thought for.
 
 
 Low:

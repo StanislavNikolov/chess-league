@@ -30,6 +30,7 @@ function renderPage(bot: Bot) {
   $("#bot-name").innerText = bot.name;
   $("#bot-elo").innerText = bot.elo.toFixed(0) + " ELO";
   $("#bot-uploaded").innerText = `Uploaded on ${bot.uploaded}`;
+  $("#game-counter").innerText = String(bot.games.length);
 
   let html = '';
   for (const game of bot.games) {

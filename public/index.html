@@ -22,7 +22,7 @@ main {
   display: grid;
   grid-gap: 20px;
 
-  grid-template-columns: 2fr 3fr 2fr;
+  grid-template-columns: 2fr 4fr 2fr;
   grid-template-rows: minmax(auto, 200px) 1fr 1fr;
   grid-template-areas: 
     "head head head"
@@ -62,6 +62,12 @@ main {
   padding: 6px;
   margin: 6px 2px;
   border-radius: 4px;
+  text-decoration: none;
+  color: #7a4e3c;
+}
+.leaderboard-item:hover {
+  cursor: pointer;
+  background-color: #ddc1a7;
 }
 .place {
   display: inline-block;
@@ -321,22 +327,19 @@ public class MyBot : IChessBot
         return element.innerHTML;
       }
 
-      function renderLeaderboardItem(place, name, elo) {
-        const age = (Math.random() * 10).toFixed(0) + ' days';
-
+      function renderLeaderboardItem(place, name, elo, href) {
         let icon = `<b>${place}</b>`
         if (place <= 3) {
           icon = `<img src="/public/medal-${place}.svg"></img>`
         }
 
         return `
-          <div class="leaderboard-item">
+          <a class="leaderboard-item" href="${href}">
             <span class="place">${icon}</span>
             <span>${sanitizeHTML(name)}</span>
             <span class="elo">${elo.toFixed(0)} ELO</span>
-          </div>
+          </a>
         `;
-
       }
 
       function updateBotLeaderboard() {
@@ -345,7 +348,7 @@ public class MyBot : IChessBot
         .then(bots => {
           let html = '';
           for(let i = 0;i < bots.length;i ++) {
-            html += renderLeaderboardItem(i+1, bots[i].name, bots[i].elo);
+            html += renderLeaderboardItem(i+1, bots[i].name, bots[i].elo, `/bot/${bots[i].id}/`);
           }
           $('#bot-list').innerHTML = html;
         });
@@ -359,7 +362,7 @@ public class MyBot : IChessBot
           .then(humans => {
             let html = '';
             for(let i = 0;i < humans.length;i ++) {
-              html += renderLeaderboardItem(i+1, humans[i].name, humans[i].elo);
+              html += renderLeaderboardItem(i+1, humans[i].name, humans[i].elo, "");
             }
             $('#human-list').innerHTML = html;
           });
@@ -457,7 +460,6 @@ public class MyBot : IChessBot
       updateOldGames();
 
       $("#timer").innerHTML = ((new Date('2023-10-01') - new Date()) / (1000 * 60 * 60 * 24)).toFixed(0);
-
 
       $("#open-upload-dialog").addEventListener("click", () => {
         $("#compilation-message").classList.toggle('hidden', true);
