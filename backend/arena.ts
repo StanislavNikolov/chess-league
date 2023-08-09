@@ -177,9 +177,10 @@ export class Arena {
 
 function pickBotByNumberOfGamesPlayed(): number {
   // Bots that have played FEWER games have a HIGHER chance to be picked.
+  // Playing more than 100 games does not change your weight.
 
   const stats = db.query(`
-    SELECT bots.id, COUNT(*) AS cnt FROM bots
+    SELECT bots.id, MIN(COUNT(*), 100) AS cnt FROM bots
     LEFT JOIN games ON games.wid = bots.id OR games.bid = bots.id
     GROUP BY bots.id
     ORDER BY cnt
