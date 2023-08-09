@@ -77,6 +77,8 @@ app.post("/api/upload/", async (c) => {
   if (typeof body.botname !== 'string') return c.text('Missing botname', 400);
   if (typeof body.humanname !== 'string') return c.text('Missing humanname', 400);
   if (typeof body.email !== 'string') return c.text('Missing email', 400);
+  if (body.humanname.length > 30) return c.text('Human name too long');
+  if (body.botname.length > 30) return c.text('Botname too long');
 
   console.log("Starting upload", body.humanname, body.email);
   const humanId = addHumanIfNotExists(body.humanname, body.email);
