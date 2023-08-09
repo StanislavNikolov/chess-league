@@ -32,6 +32,7 @@ export class Arena {
   c2bi: Record<'w' | 'b', BotInstance>;
   board: Chess;
   moveTimeoutId: Timer;
+  gameEnded = false;
 
   constructor(wid: number, bid: number, initial_time_ms: number = 60 * 1000) {
     const query = db.query("SELECT hash FROM bots WHERE id=?1");
@@ -81,8 +82,8 @@ export class Arena {
     this.c2bi['w'].proc.stdout.on('data', (data: Buffer) => this.#procWrote('w', data));
     this.c2bi['b'].proc.stdout.on('data', (data: Buffer) => this.#procWrote('b', data));
 
-    this.c2bi['w'].proc.stderr.on('data', d => console.log('werr', d.toString()));
-    this.c2bi['b'].proc.stderr.on('data', d => console.log('berr', d.toString()));
+    // this.c2bi['w'].proc.stderr.on('data', d => console.log('werr', d.toString()));
+    // this.c2bi['b'].proc.stderr.on('data', d => console.log('berr', d.toString()));
   }
 
   #pokeAtTheBotThatIsOnTurn() {
@@ -93,6 +94,7 @@ export class Arena {
 
     if (this.moveTimeoutId != null) {
       clearTimeout(this.moveTimeoutId);
+      this.moveTimeoutId = null;
     }
     this.moveTimeoutId = setTimeout(() => this.#timeout(), this.c2bi[col].time_ms + 1);
 
@@ -112,6 +114,11 @@ export class Arena {
   }
 
   #procWrote(color: 'w' | 'b', data: Buffer) {
+    if (this.gameEnded) {
+      // I couldn't be bother to detach the procWrote event handler, so this should do.
+      console.log(`It looks like ${color} managed to write after we tried to kill it.`);
+      return;
+    }
     const other = color === 'w' ? 'b' : 'w';
     const fullname = color === 'w' ? 'White' : 'Black';
 
@@ -149,11 +156,13 @@ export class Arena {
   }
 
   #endGame(winner: string, reason: string) {
+    this.gameEnded = true;
     this.c2bi['w'].proc.kill();
     this.c2bi['b'].proc.kill();
 
     if (this.moveTimeoutId != null) {
       clearTimeout(this.moveTimeoutId);
+      this.moveTimeoutId = null;
     }
 
     // Record the game result
