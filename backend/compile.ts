@@ -1,7 +1,6 @@
 import { makeTmpDir } from "./utils";
 
 export async function compile(code: string) {
-  console.log("Starting compile");
   // Copy the template project into a tmpdir.
   const tmpdir = makeTmpDir();
   const cp = Bun.spawn(["cp", "-r", "./bot-scaffold", tmpdir]);

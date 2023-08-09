@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { Chess } from "chess.js";
 import { mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import { db } from "./db";
 import { makeTmpDir, getElo } from "./utils";
 
@@ -13,6 +14,30 @@ class BotInstance {
   ) {
   }
 };
+
+function spawnBotProcess(tmpdir: string, hash: string) {
+  // This function will try to use bubblewrap to securely run the bot, if possible.
+  const dotnetBin = Bun.which("dotnet");
+  if (dotnetBin == null) throw Error("Couldn't find dotnet in PATH");
+
+  if (Bun.which("bwrap") == null) {
+    console.warn("bubblewrap (bwrap) not installed. Running insecurely!");
+    return spawn("dotnet", [`${tmpdir}/${hash}.dll`]);
+  }
+
+  return spawn("bwrap", [
+    "--ro-bind", "/usr", "/usr",
+    "--dir", "/tmp", // Dotnet needs /tmp to exist
+    "--proc", "/proc", // Dotnet refuses to start without proc to audit itself
+    "--ro-bind", "/lib", "/lib",
+    "--ro-bind", dirname(dotnetBin), "/dotnet", // Mount the dotnet install directory
+    "--ro-bind", tmpdir, "/fight",
+    "--chdir", "/fight",
+    "--unshare-all", // This disables practically everything, including reading other pids, network, etc.
+    "--clearenv", // Do not leak any other env variable, not that they would help
+    "--", "/dotnet/dotnet", `${hash}.dll` // Actually start the damn bot!
+  ]);
+}
 
 /*
  * This class menages the the bot processes and the database records needed to follow the game live.
@@ -68,9 +93,8 @@ export class Arena {
     await Bun.write(Bun.file(`${this.tmpdir}/${this.c2bi['w'].hash}.runtimeconfig.json`), Bun.file(`runtimeconfig.json`));
     await Bun.write(Bun.file(`${this.tmpdir}/${this.c2bi['b'].hash}.runtimeconfig.json`), Bun.file(`runtimeconfig.json`));
 
-
-    this.c2bi['w'].proc = spawn('dotnet', [`${this.tmpdir}/${this.c2bi['w'].hash}.dll`]);
-    this.c2bi['b'].proc = spawn('dotnet', [`${this.tmpdir}/${this.c2bi['b'].hash}.dll`]);
+    this.c2bi['w'].proc = spawnBotProcess(this.tmpdir, this.c2bi['w'].hash);
+    this.c2bi['b'].proc = spawnBotProcess(this.tmpdir, this.c2bi['b'].hash);
 
     this.c2bi['w'].proc.stdout.on('data', (data: Buffer) => this.#procWrote('w', data));
     this.c2bi['b'].proc.stdout.on('data', (data: Buffer) => this.#procWrote('b', data));

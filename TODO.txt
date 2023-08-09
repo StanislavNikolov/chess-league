@@ -1,13 +1,12 @@
 High:
-  [5] - Login system - send a special link to the email
-  [3] - Lite Blue: Finish the "your bots" page - add button to decommision bot
+   - Login system - send a special link to the email
+   - Cmndr: Finish the "your bots" page - add button to decommision bot
 
 Mid:
-  [3] - Add timer to live games.
-  [3] - Add token count to each bot in the db
-  [2] - Add sandboxing for the dotnet process
-  [2] - Add animation when live games "die"
-
+  - Add "fen" string view on the game page
+  - Add timer to live games.
+  - Add token count to each bot in the db
+  - Add animation when live games "die"
 
 Low:
   [4] - Some kind of captcha for uploading new bots
