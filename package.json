@@ -6,6 +6,7 @@
   },
   "dependencies": {
     "chess.js": "^1.0.0-beta.6",
+    "chessboard-element": "^1.2.0",
     "hono": "^2.2.5"
   },
   "scripts": {

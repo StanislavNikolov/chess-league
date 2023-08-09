@@ -48,6 +48,7 @@ const app = new Hono();
 
 app.use("/favicon.ico", serveStatic({ path: "./public/favicon.ico" }));
 app.use("/", serveStatic({ path: "./public/index.html" }));
+app.get("/game/:gameId/", serveStatic({ path: "./public/game.html" }));
 app.use("/public/*", serveStatic({ root: "./" }));
 
 app.use("*", async (c, next) => {
@@ -98,7 +99,7 @@ app.post("/fight/:wid/:bid/", async (c) => {
   return c.text('', 200);
 });
 
-app.get("/api/bots/", async c => {
+app.get("/api/bots/", c => {
   const bots = db.query(`
     SELECT bots.id, name, coalesce(SUM(change), 0) AS elo FROM bots
     LEFT JOIN elo_updates ON elo_updates.bot_id = bots.id
@@ -108,7 +109,7 @@ app.get("/api/bots/", async c => {
   return c.json(bots);
 });
 
-app.get("/api/old-games/", async c => {
+app.get("/api/old-games/", c => {
   const games = db.query(`
     SELECT games.id, wid, bid, w.name as wname, b.name as bname, started, ended, winner
     FROM games
@@ -121,7 +122,7 @@ app.get("/api/old-games/", async c => {
   return c.json(games);
 });
 
-app.get("/api/live-games/", async c => {
+app.get("/api/live-games/", c => {
   const games = db.query(`
     SELECT games.id, initial_position, wid, bid, w.name as wname, b.name as bname, started, ended, winner
     FROM games
@@ -147,6 +148,27 @@ app.get("/api/live-games/", async c => {
     g.totalTime = totalTime;
   }
   return c.json(games);
+});
+
+app.get("/api/game/:gameId/", c => {
+  const { gameId } = c.req.param();
+
+  const game = db
+    .query(`
+      SELECT initial_time_ms, initial_position, wid, bid, wbot.name AS wname, bbot.name AS bname, winner, reason
+      FROM games
+      JOIN bots AS wbot ON wbot.id = wid
+      JOIN bots AS bbot ON bbot.id = bid
+      WHERE games.id = ?1
+    `).get([gameId]);
+
+  if (game == null) return c.text('', 404);
+
+  game.moves = db
+    .query("SELECT move, color, time FROM moves WHERE game_id = ?1 ORDER BY id")
+    .values([gameId]);
+
+  return c.json(game);
 });
 
 app.get("/api/humans/", async c => {
@@ -175,6 +197,14 @@ if (process.argv.includes('recompile')) {
 }
 
 setInterval(makeArenaIfNeeded, 1000);
+
+// Bundle the frontend before starting the server.
+await Bun.build({
+  entrypoints: ["./frontend/game.ts"],
+  outdir: "./public/bundled/",
+  minify: true,
+  sourcemap: "external"
+})
 
 const port = parseInt(process.env.PORT) || 3000;
 console.log(`Running at http://localhost:${port}`);

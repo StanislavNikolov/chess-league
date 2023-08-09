@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+    body {
+      background: radial-gradient(circle at 50% 0%, rgba(247,232,211,1) 0%, rgba(218,190,164,1) 71%, rgba(154,130,118,1) 100%);
+      background-size: cover;
+      display: flex;
+      font-family: Verdana;
+      max-height: 100vh;
+      margin: 0;
+      justify-content: center;
+    }
+    #board-side {
+      flex-grow: 1;
+      max-width: 50rem;
+    }
+    #info-side {
+      flex-basis: 7rem;
+      overflow-y: auto;
+    }
+    #board-side, #info-side {
+      display: inline-block;
+      margin: 20px;
+      background-color: #f6eae0;
+      padding: 8px;
+      border-radius: 8px;
+      color: #7a4e3c;
+      box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+    }
+    .move {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px;
+      margin: 4px;
+      border-radius: 4px;
+    }
+
+    .move.b     { background-color: #b5886333; }
+    .move.w     { background-color: #f0d9b533; }
+    .move:hover { background-color: #ddc1a7;   }
+
+    .time { font-size: x-small; }
+    #winner {
+      font-size: larger;
+      font-weight: 600;
+    }
+
+    </style>
+  </head>
+  <body>
+    <div id="board-side">
+      <div id="winner"></div>
+      Reason: <span id="reason"></span>
+      <hr>
+      <div class="black">
+        <span class="name"></span>
+        <span class="time"></span>
+      </div>
+      <chess-board></chess-board>
+      <div class="white">
+        <span class="name"></span>
+        <span class="time"></span>
+      </div>
+    </div>
+    <div id="info-side"></div>
+
+    <script type="module" src="/public/bundled/game.js"></script>
+  </body>
+</html>
