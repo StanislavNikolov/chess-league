@@ -1,4 +1,10 @@
-﻿MyBot bot = new MyBot();
+﻿// Disable console output. Some competitors use stdout for debugging info, which confuses the
+// backend.
+var nullWriter = new StreamWriter(Stream.Null);
+var savedStdoutWriter = Console.Out;
+Console.SetOut(nullWriter);
+
+MyBot bot = new MyBot();
 
 while (true)
 {
@@ -17,5 +23,8 @@ while (true)
 
 	// Think and write move to stdout.
 	ChessChallenge.API.Move move = bot.Think(apiBoard, apiTimer);
+
+	Console.SetOut(savedStdoutWriter);
 	Console.WriteLine($"{move}");
+	Console.SetOut(nullWriter);
 }
