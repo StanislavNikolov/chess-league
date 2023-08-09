@@ -127,9 +127,15 @@ h2 {
 
 .game {
   display: flex;
+  color: #7a4e3c;
   justify-content: center;
-  margin-top: 10px;
+  padding: 5px;
+  text-decoration: none;
+  border-radius: 4px;
   border-bottom: 1px solid #eddfcc;
+}
+.game:hover {
+  background-color: #ddc1a7;
 }
 .bot {
   display: inline-block;
@@ -364,7 +370,7 @@ public class MyBot : IChessBot
 
       function renderGame(g) {
         return `
-          <div class="game">
+          <a class="game" href="/game/${g.id}/">
             <span class="bot white">
               ${g.winner === 'w' ? '<span class="crown w"></span>' : ''}
               ${sanitizeHTML(g.wname)}
@@ -373,7 +379,7 @@ public class MyBot : IChessBot
               ${sanitizeHTML(g.bname)}
               ${g.winner === 'b' ? '<span class="crown b"></span>' : ''}
             </span>
-          </div>
+          </a>
         `;
       }
 
