@@ -6,6 +6,7 @@ import { serveStatic } from "hono/serve-static.bun";
 import { Arena, makeArenaIfNeeded } from "./arena";
 import { compile } from "./compile";
 import { db } from "./db";
+import { getElo } from "./utils";
 
 function addHumanIfNotExists(name: string, email: string): number {
   try {
@@ -49,6 +50,7 @@ const app = new Hono();
 app.use("/favicon.ico", serveStatic({ path: "./public/favicon.ico" }));
 app.use("/", serveStatic({ path: "./public/index.html" }));
 app.get("/game/:gameId/", serveStatic({ path: "./public/game.html" }));
+app.get("/bot/:botId/", serveStatic({ path: "./public/bot.html" }));
 app.use("/public/*", serveStatic({ root: "./" }));
 
 app.use("*", async (c, next) => {
@@ -173,7 +175,40 @@ app.get("/api/game/:gameId/", c => {
   return c.json(game);
 });
 
-app.get("/api/humans/", async c => {
+app.get("/api/bot/:botId/", c => {
+  const botId = Number(c.req.param("botId"));
+
+  const bot = db.query('SELECT name, uploaded FROM bots WHERE bots.id = ?1').get([botId]);
+
+  if (bot == null) return c.text('', 404);
+
+  bot.elo = getElo(botId);
+
+  bot.games = db
+    .query(`
+      SELECT games.id AS id, started, bid, wid, wbot.name AS wname, bbot.name AS bname, winner, reason, change as elo_change
+      FROM games
+      JOIN bots AS wbot ON games.wid = wbot.id
+      JOIN bots AS bbot ON games.bid = bbot.id
+      JOIN elo_updates ON game_id = games.id AND elo_updates.bot_id = ?1
+      WHERE wid = ?1 OR bid = ?1 ORDER BY started DESC
+    `)
+    .all([botId]);
+
+  for (const g of bot.games) {
+    // Truncate the illegal move messages.
+    if (g.reason.startsWith("Black made an illegal move:")) {
+      g.reason = "Black made an illegal move";
+    }
+    if (g.reason.startsWith("White made an illegal move:")) {
+      g.reason = "White made an illegal move";
+    }
+  }
+
+  return c.json(bot);
+});
+
+app.get("/api/humans/", c => {
   const humans = db.query(`
     SELECT humans.id, humans.name, MAX(b.elo) as elo FROM humans
     JOIN (
@@ -201,12 +236,14 @@ if (process.argv.includes('recompile')) {
 setInterval(makeArenaIfNeeded, 1000);
 
 // Bundle the frontend before starting the server.
-await Bun.build({
-  entrypoints: ["./frontend/game.ts"],
-  outdir: "./public/bundled/",
-  minify: true,
-  sourcemap: "external"
-})
+for (const file of ["game.ts", "bot.ts"]) {
+  await Bun.build({
+    entrypoints: [`./frontend/${file}`],
+    outdir: "./public/bundled/",
+    minify: true,
+    sourcemap: "external"
+  });
+}
 
 const port = parseInt(process.env.PORT) || 3000;
 console.log(`Running at http://localhost:${port}`);

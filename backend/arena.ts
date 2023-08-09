@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { Chess } from "chess.js";
 import { mkdir } from "node:fs/promises";
 import { db } from "./db";
-import { makeTmpDir } from "./utils";
+import { makeTmpDir, getElo } from "./utils";
 
 class BotInstance {
   constructor(
@@ -13,13 +13,6 @@ class BotInstance {
   ) {
   }
 };
-
-function getElo(botId: number): number {
-  return db
-    .query("SELECT coalesce(SUM(change), 0) AS elo FROM elo_updates WHERE bot_id = ?1")
-    .get(botId).elo;
-}
-
 
 /*
  * This class menages the the bot processes and the database records needed to follow the game live.

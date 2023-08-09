@@ -78,4 +78,4 @@ fetch(`/api/game/${gameId}/`)
         document.querySelector("#winner").innerText = 'In war, there are no winners, only widows';
       }
     }
-  })
+  });
