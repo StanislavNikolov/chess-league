@@ -51,6 +51,10 @@ db.query(`
 `).run();
 
 db.query(`
+  CREATE INDEX IF NOT EXISTS moves_game_id ON moves (game_id);
+`).run();
+
+db.query(`
   CREATE TABLE IF NOT EXISTS elo_updates (
     id INTEGER PRIMARY KEY,
     game_id INTEGER,
