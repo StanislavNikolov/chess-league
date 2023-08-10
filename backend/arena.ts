@@ -272,7 +272,7 @@ testArenaAlgo();
 
 export function makeArenaIfNeeded() {
   let runningGames = db.query("SELECT COUNT(*) as c FROM games WHERE ended IS NULL").get().c;
-  for (; runningGames < 4; runningGames++) {
+  for (; runningGames < 8; runningGames++) {
     let id1 = pickBotByNumberOfGamesPlayed();
     if (id1 == null) return;
 
