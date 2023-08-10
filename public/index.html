@@ -5,19 +5,17 @@
     <style>
 html {
   background: radial-gradient(circle at 50% 0%, rgba(247,232,211,1) 0%, rgba(218,190,164,1) 71%, rgba(154,130,118,1) 100%);
-    background-size: cover;
+  background-size: cover;
 }
 body {
   margin: 0;
   font-family: Verdana;
 }
 main {
-  width: 100vw;
-  /* height: 100vh; */
+  height: 100vh;
   margin: 0;
   padding: 20px;
   box-sizing: border-box;
-
 
   display: grid;
   grid-gap: 20px;
@@ -32,15 +30,15 @@ main {
 #head-tile { grid-area: head; }
 #human-leaderboard-tile {
   grid-area: hlead;
-  max-height: 30rem;
+  overflow: hidden;
 }
 #bot-leaderboard-tile {
   grid-area: blead;
-  max-height: 30rem;
+  overflow: hidden;
 }
 #old-games-tile {
   grid-area: old;
-  max-height: 30rem;
+  overflow: hidden;
 }
 #live-games-tile { grid-area: live; }
 #upload-tile { grid-area: upl; }
@@ -59,8 +57,8 @@ main {
   display: flex;
   align-items: center;
   background-color: #eddfcc;
-  padding: 6px;
-  margin: 6px 2px;
+  padding: 4px;
+  margin: 4px 2px;
   border-radius: 4px;
   text-decoration: none;
   color: #7a4e3c;
@@ -123,7 +121,8 @@ h2 {
 #live-games {
   display: grid;
   grid-gap: 20px;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  overflow-y: auto;
 }
 
 .live-game:not([data-game-id]) {
@@ -215,33 +214,53 @@ dialog form input, textarea {
 }
 
 @media only screen and (max-width: 1200px) {
+  /* Tablet */
+  body { font-size: 10pt; }
+  h2 { font-size: 12pt; }
   main {
-
     grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: minmax(auto, 200px) 1fr 1fr 1fr;
+    padding: 12px;
+    grid-gap: 12px;
+    grid-template-rows: minmax(auto, 160px) 1fr 1fr 1fr;
     grid-template-areas: 
       "head head head"
       "hlead live live"
       "blead live live"
       "old old upl";
   }
+  #live-games {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
 }
 @media only screen and (max-width: 800px) {
-  h2 {
-    font-size: large;
-  }
+  /* Phone */
+  body { font-size: 10pt; }
+  h2 { font-size: 12pt; }
   main {
-    padding: 10px;
-    grid-gap: 10px;
+    height: unset;
+
+    padding: 8px;
+    grid-gap: 8px;
     font-size: smaller;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: 120px 1fr 1fr 1fr;
+    grid-template-rows: 80px 380px 400px 400px;
     grid-template-areas: 
       "head head"
       "hlead blead"
       "live live"
       "old old"
       "upl upl";
+  }
+  .tile { padding: 4px; }
+
+  #timer { font-size: 20pt; }
+
+  .place {
+    width: 20px;
+  }
+
+  #live-games {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   }
 }
     </style>
