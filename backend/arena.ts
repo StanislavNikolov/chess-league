@@ -77,7 +77,7 @@ export class Arena {
     this.board = new Chess(fen);
 
     await this.#prepare();
-    db.query("UPDATE games SET started = ?1, initial_position = ?2 WHERE id = ?3").run([new Date().toISOString(), fen, this.gameId]);
+    db.query("UPDATE games SET started = ?1, initial_position = ?2, current_position = ?3 WHERE id = ?4").run([new Date().toISOString(), fen, fen, this.gameId]);
     this.#pokeAtTheBotThatIsOnTurn();
   }
 
