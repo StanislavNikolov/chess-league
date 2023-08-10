@@ -6,7 +6,8 @@
       "version": "6.0.20"
     },
     "configProperties": {
-      "System.Reflection.Metadata.MetadataUpdater.IsSupported": false
+      "System.Reflection.Metadata.MetadataUpdater.IsSupported": false,
+      "System.GC.HeapHardLimit": 2147483648
     }
   }
 }
