@@ -174,8 +174,8 @@ export class Arena {
 
   #endGame(winner: string, reason: string) {
     this.gameEnded = true;
-    this.c2bi['w'].proc.kill();
-    this.c2bi['b'].proc.kill();
+    this.c2bi['w'].proc.kill(9);
+    this.c2bi['b'].proc.kill(9);
 
     if (this.moveTimeoutId != null) {
       clearTimeout(this.moveTimeoutId);
