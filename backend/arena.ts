@@ -230,7 +230,7 @@ function pickBotThatHasCloseElo(otherBotId: number): number {
     GROUP BY bot_id
   `).all([otherBotId]) as { bot_id: number, elo: number }[];
 
-  const calcWeight = (elo: number) => 1 / Math.pow(Math.abs(elo - otherElo), 0.5);
+  const calcWeight = (elo: number) => 1 / Math.pow(Math.abs(elo - otherElo), 1.5);
 
   const weightSum = stats.reduce((tot, curr) => tot + calcWeight(curr.elo), 0);
   let prefSum = 0;
@@ -272,7 +272,7 @@ testArenaAlgo();
 
 export function makeArenaIfNeeded() {
   let runningGames = db.query("SELECT COUNT(*) as c FROM games WHERE ended IS NULL").get().c;
-  for (; runningGames < 8; runningGames++) {
+  for (; runningGames < 4; runningGames++) {
     let id1 = pickBotByNumberOfGamesPlayed();
     if (id1 == null) return;
 

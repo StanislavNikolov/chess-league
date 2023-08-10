@@ -129,6 +129,11 @@ h2 {
     opacity: 0;
 }
 
+.name {
+  display: flex;
+  font-size: smaller;
+}
+
 .game {
   display: flex;
   color: #7a4e3c;
@@ -218,7 +223,7 @@ dialog form input, textarea {
   body { font-size: 10pt; }
   h2 { font-size: 12pt; }
   main {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 2fr 1fr;
     padding: 12px;
     grid-gap: 12px;
     grid-template-rows: minmax(auto, 160px) 1fr 1fr 1fr;
@@ -229,7 +234,7 @@ dialog form input, textarea {
       "old old upl";
   }
   #live-games {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   }
 }
 @media only screen and (max-width: 800px) {
@@ -421,11 +426,9 @@ public class MyBot : IChessBot
       function renderLiveGame(g) {
         return `
           <div data-game-id=${g.id} class="live-game">
-            <div class="bname">${sanitizeHTML(g.bname)}</div>
-            <br>
+            <div class="name">${sanitizeHTML(g.bname)} <span class="elo">${g.belo.toFixed(0)}</span></div>
             <chess-board position=${g.fen}></chess-board>
-            <br>
-            <div class="wname">${sanitizeHTML(g.wname)}</div>
+            <div class="name">${sanitizeHTML(g.wname)} <span class="elo">${g.welo.toFixed(0)}</span></div>
           </div>
         `;
       }
@@ -450,24 +453,21 @@ public class MyBot : IChessBot
             // Try to find an empty board to connect to - we do that to minimize the flashes
             const candidate = document.querySelector(".live-game:not([data-game-id])");
             if (candidate) {
-              candidate.setAttribute("data-game-id", g.id);
-              candidate.querySelector("chess-board").setPosition(g.fen);
-              candidate.querySelector(".wname").innerText = g.wname;
-              candidate.querySelector(".bname").innerText = g.bname;
+              candidate.outerHTML = renderLiveGame(g);
               continue;
             }
 
             // Last resort - make a new square.
             $('#live-games').innerHTML += renderLiveGame(g);
           }
-
-
           
-          for(const cb of document.querySelectorAll('chess-board')) {
-            // There is a bug with the chess-board library. It has an element
-            // taking space that shouldn't exist.
-            cb.shadowRoot.querySelector('#dragged-pieces')?.remove();
-          }
+          // There is a bug with the chess-board library. It has an element
+          // taking space that shouldn't exist.
+          setTimeout(() => {
+            for(const cb of document.querySelectorAll('chess-board')) {
+              cb.shadowRoot.querySelector('#dragged-pieces')?.remove();
+            }
+          }, 0);
         });
 
         setTimeout(updateLiveGames, 500);

@@ -128,13 +128,15 @@ app.get("/api/old-games/", c => {
 
 app.get("/api/live-games/", c => {
   const games = db.query(`
-    SELECT games.id, initial_position, wid, bid, w.name as wname, b.name as bname, started, ended, winner
+    WITH bot_elos AS ( SELECT bot_id, coalesce(SUM(change), 0) AS elo FROM elo_updates GROUP BY bot_id )
+    SELECT games.id, initial_position, wid, bid, w.name as wname, b.name as bname, we.elo as welo, be.elo as belo
     FROM games
     JOIN bots AS w ON w.id = wid
     JOIN bots AS b ON b.id = bid
+    JOIN bot_elos AS we ON we.bot_id = wid
+    JOIN bot_elos AS be ON be.bot_id = bid
     WHERE winner IS NULL AND initial_position IS NOT NULL
     ORDER BY games.id DESC
-    LIMIT 50
   `).all();
 
   // Simulate each game to calculate its fen string.
