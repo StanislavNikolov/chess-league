@@ -160,6 +160,8 @@ export class Arena {
     db.query("INSERT INTO moves (game_id, move, color, time) VALUES (?1, ?2, ?3, ?4)")
       .run([this.gameId, move, color, moveTime]);
 
+    db.query("UPDATE games SET current_position = ?1 WHERE id = ?2").run([this.board.fen(), this.gameId]);
+
     if (this.board.isGameOver()) { // Be careful about the order of the checks.
       if (this.board.isStalemate()) return this.#endGame('d', 'Stalemate');
       if (this.board.isInsufficientMaterial()) return this.#endGame('d', 'Insufficient Material');

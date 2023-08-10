@@ -33,6 +33,7 @@ db.query(`
     winner VARCHAR(1),
     initial_time_ms NUMBER NOT NULL,
     initial_position TEXT,
+    current_position TEXT, -- used for quickly showing live games
     reason TEXT,
     FOREIGN KEY(wid) REFERENCES bots(id) ON DELETE CASCADE,
     FOREIGN KEY(bid) REFERENCES bots(id) ON DELETE CASCADE
@@ -50,9 +51,9 @@ db.query(`
   );
 `).run();
 
-db.query(`
-  CREATE INDEX IF NOT EXISTS moves_game_id ON moves (game_id);
-`).run();
+db.query("CREATE INDEX IF NOT EXISTS moves_game_id ON moves (game_id);").run();
+db.query("CREATE INDEX IF NOT EXISTS elo_game_id ON elo_updates (game_id);").run();
+db.query("CREATE INDEX IF NOT EXISTS elo_bot_id ON elo_updates (bot_id);").run();
 
 db.query(`
   CREATE TABLE IF NOT EXISTS elo_updates (

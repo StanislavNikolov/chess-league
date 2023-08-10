@@ -129,7 +129,7 @@ app.get("/api/old-games/", c => {
 app.get("/api/live-games/", c => {
   const games = db.query(`
     WITH bot_elos AS ( SELECT bot_id, coalesce(SUM(change), 0) AS elo FROM elo_updates GROUP BY bot_id )
-    SELECT games.id, initial_position, wid, bid, w.name as wname, b.name as bname, we.elo as welo, be.elo as belo
+    SELECT games.id, initial_position, current_position AS fen, wid, bid, w.name as wname, b.name as bname, we.elo as welo, be.elo as belo
     FROM games
     JOIN bots AS w ON w.id = wid
     JOIN bots AS b ON b.id = bid
@@ -138,21 +138,6 @@ app.get("/api/live-games/", c => {
     WHERE winner IS NULL AND initial_position IS NOT NULL
     ORDER BY games.id DESC
   `).all();
-
-  // Simulate each game to calculate its fen string.
-  for (const g of games) {
-    const moves = db.query('SELECT move, color, time FROM moves WHERE game_id = ?1 ORDER BY id').all(g.id);
-
-    const chess = new Chess(g.initial_position);
-    const totalTime = { 'w': 0, 'b': 0 };
-    for (const move of moves) {
-      chess.move(move.move);
-      totalTime[move.color] += move.time;
-    }
-
-    g.fen = chess.fen();
-    g.totalTime = totalTime;
-  }
   return c.json(games);
 });
 
@@ -222,6 +207,7 @@ app.get("/api/humans/", c => {
     GROUP BY humans.id
     ORDER BY elo DESC
   `).all();
+
   return c.json(humans);
 });
 
