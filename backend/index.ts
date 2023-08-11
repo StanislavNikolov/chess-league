@@ -190,6 +190,16 @@ if (process.argv.includes('recompile')) {
   process.exit(0);
 }
 
+async function cleanDeadLiveGames() {
+  await sql`
+    DELETE FROM games
+    WHERE ended IS NULL
+    AND EXTRACT(EPOCH FROM started) * 1000 + 3 * initial_time_ms < EXTRACT(EPOCH FROM NOW()) * 1000
+  `;
+  setTimeout(cleanDeadLiveGames, 10 * 1000);
+}
+cleanDeadLiveGames();
+
 // Bundle the frontend before starting the server.
 for (const file of ["game.ts", "bot.ts"]) {
   await Bun.build({

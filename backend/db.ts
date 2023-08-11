@@ -55,7 +55,7 @@ await sql`
     id SERIAL PRIMARY KEY,
     game_id INTEGER,
     bot_id INTEGER NOT NULL,
-    change INTEGER NOT NULL,
+    change FLOAT NOT NULL,
     FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE,
     FOREIGN KEY(bot_id) REFERENCES bots(id) ON DELETE CASCADE
   );
