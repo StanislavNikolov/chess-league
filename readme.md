@@ -25,9 +25,9 @@ psql postgres
 > \c chess
 > GRANT ALL ON SCHEMA public TO chess;
 cat > .env
-POSTGRES_DATABASE=chess
-POSTGRES_USERNAME=chess
-POSTGRES_PASSWORD=RANDOM_PASSWORD
+PGDATABASE=chess
+PGUSERNAME=chess
+PGPASSWORD=RANDOM_PASSWORD
 ```
 
 ## The server itself
