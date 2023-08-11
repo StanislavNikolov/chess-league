@@ -1,3 +1,15 @@
+import { Chess } from "chess.js";
+import { Subprocess } from "bun";
+import { mkdir } from "node:fs/promises";
+import { ok as assert } from "node:assert";
+import { dirname } from "node:path";
+import sql from "./db";
+import { makeTmpDir, getElo } from "./utils";
+import { randomBytes } from "node:crypto";
+import rawfenstxt from "../fens.txt";
+
+const startingPositions = rawfenstxt.split('\n');
+
 const colors = {
   reset: "\x1b[0m",
   black: "\x1b[30m",
@@ -11,16 +23,6 @@ const colors = {
   gray: "\x1b[90m",
 }
 
-import { Chess } from "chess.js";
-import { Subprocess } from "bun";
-import { mkdir } from "node:fs/promises";
-import { ok as assert } from "node:assert";
-import { dirname } from "node:path";
-import sql from "./db";
-import { makeTmpDir, getElo } from "./utils";
-import rawfenstxt from "../fens.txt";
-
-const startingPositions = rawfenstxt.split('\n');
 
 interface BotInstance {
   id: number,
@@ -28,7 +30,7 @@ interface BotInstance {
   proc?: Subprocess<"pipe", "pipe", "inherit">
 };
 
-function spawnBotProcess(tmpdir: string, hash: string) {
+async function spawnBotProcess(tmpdir: string, hash: string) {
   // This function will try to use bubblewrap to securely run the bot, if possible.
   const dotnetBin = Bun.which("dotnet");
   if (dotnetBin == null) throw Error("Couldn't find dotnet in PATH");
@@ -37,8 +39,16 @@ function spawnBotProcess(tmpdir: string, hash: string) {
     return Bun.spawn(["dotnet", `${tmpdir}/${hash}.dll`], { stdin: "pipe", stdout: "pipe" });
   }
 
+  const cgname = `${new Date().getTime()}-${hash}`;
+  console.log('Cgname', cgname);
+  await Bun.spawn(["cgcreate", "-g", `memory:${cgname}`]).exited;
+  await Bun.spawn(["cgset", "-r", "memory.max=2G", cgname]).exited;
+
+  // Start the bot inside the C# VM inside bubblewrap inside a cgroup inside the Heizner VM...
+  // Something's wrong I can feel it
+
   return Bun.spawn([
-    "bwrap",
+    "cgexec", "-g", `memory:${cgname}`, "bwrap",
     "--ro-bind", "/usr", "/usr",
     "--dir", "/tmp", // Dotnet needs /tmp to exist
     "--proc", "/proc", // Dotnet refuses to start without proc to audit itself
@@ -97,10 +107,14 @@ export class Arena {
     await Bun.write(Bun.file(`${tmpdir}/${whash}.runtimeconfig.json`), Bun.file(`runtimeconfig.json`));
     await Bun.write(Bun.file(`${tmpdir}/${bhash}.runtimeconfig.json`), Bun.file(`runtimeconfig.json`));
 
-    this.bots.w.proc = spawnBotProcess(tmpdir, whash);
-    this.bots.b.proc = spawnBotProcess(tmpdir, bhash);
+    this.bots.w.proc = await spawnBotProcess(tmpdir, whash);
+    this.bots.b.proc = await spawnBotProcess(tmpdir, bhash);
 
     await this.#pokeAtTheBotThatIsOnTurn();
+
+    // Leaky abstraction by spawnBotProcess. Its late at night :<
+    // await Bun.spawn(["cgdelete", "-g", `memory:${tmpdir}/${whash}`]).exited;
+    // await Bun.spawn(["cgdelete", "-g", `memory:${tmpdir}/${bhash}`]).exited;
 
     await Bun.spawn(["rm", "-rf", tmpdir]).exited;
   }
@@ -160,7 +174,6 @@ export class Arena {
     try {
       this.board.move(move);
     } catch (e) {
-      // TODO test this
       return this.#endGame(other, `${fullname} made an illegal move: ${move}`);
     }
 
