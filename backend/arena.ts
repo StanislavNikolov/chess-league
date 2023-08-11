@@ -34,7 +34,6 @@ function spawnBotProcess(tmpdir: string, hash: string) {
   if (dotnetBin == null) throw Error("Couldn't find dotnet in PATH");
 
   if (Bun.which("bwrap") == null) {
-    console.warn("bubblewrap (bwrap) not installed. Running insecurely!");
     return Bun.spawn(["dotnet", `${tmpdir}/${hash}.dll`], { stdin: "pipe", stdout: "pipe" });
   }
 
@@ -122,7 +121,6 @@ export class Arena {
     try {
       this.bots[col].proc.stdin.write(this.board.fen() + '\n' + timerString + '\n');
       this.bots[col].proc.stdin.flush();
-      console.log(`${colors.gray}Waiting for response from ${col}${colors.reset}`)
     } catch (e) {
       return this.#endGame(other, `${fullname} kicked to bucket early (crashed)`);
     }
@@ -142,8 +140,12 @@ export class Arena {
   }
 
   async #procWrote(color: 'w' | 'b', move: string) {
-    console.log(`${colors.gray}${color} wrote: ${JSON.stringify(move)}${colors.reset}`);
-    assert(!this.gameEnded);
+    // console.log(`${colors.gray}${color} wrote: ${JSON.stringify(move)}${colors.reset}`);
+
+    if (this.gameEnded) {
+      console.log(`${colors.cyan}#procWrote called after game has ended. This should only be possible if a timeout was triggered during #endGame!${colors.reset}`);
+      return;
+    }
     assert(this.board.turn() === color);
 
     const other = color === 'w' ? 'b' : 'w';
@@ -181,19 +183,21 @@ export class Arena {
   }
 
   async #endGame(winner: string, reason: string) {
-    console.log(`${colors.cyan}Game ${this.gameId} won by ${winner} - ${reason}${colors.reset}`);
+    console.log(`Game ${this.gameId} won by ${winner} - ${reason}`);
 
     this.gameEnded = true;
-    this.bots.w.proc.kill(9);
-    this.bots.b.proc.kill(9);
 
     if (this.moveTimeoutId != null) {
       clearTimeout(this.moveTimeoutId);
       this.moveTimeoutId = null;
     }
 
+    this.bots.w.proc.kill(9);
+    this.bots.b.proc.kill(9);
+
     // Record the game result
     await sql`UPDATE games SET ended=NOW(), winner=${winner}, reason=${reason} WHERE id=${this.gameId}`;
+    console.log("Game saved as ended")
 
     // Calculate new elo - https://www.youtube.com/watch?v=AsYfbmp0To0
     const welo = await getElo(this.bots.w.id);
@@ -261,7 +265,7 @@ async function match() {
 
   if (Math.random() > 0.5) [id1, id2] = [id2, id1];
 
-  console.log(`${colors.gray}Starting game between ${id1} and ${id2}${colors.reset}`);
+  console.log(`${colors.green}Starting game between ${id1} and ${id2}${colors.reset}`);
   const arena = new Arena(id1, id2);
   await arena.start();
 }

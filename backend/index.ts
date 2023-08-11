@@ -5,9 +5,27 @@ import { compile } from "./compile";
 import sql from "./db";
 import { getElo } from "./utils";
 
+const app = new Hono();
+
+app.use("/favicon.ico", serveStatic({ path: "./public/favicon.ico" }));
+app.use("/", serveStatic({ path: "./public/index.html" }));
+app.get("/game/:gameId/", serveStatic({ path: "./public/game.html" }));
+app.get("/bot/:botId/", serveStatic({ path: "./public/bot.html" }));
+app.use("/public/*", serveStatic({ root: "./" }));
+
+app.use("*", async (c, next) => {
+  const begin = performance.now();
+  await next();
+  const ms = (performance.now() - begin);
+  const statusColor = c.res.status === 200 ? "\x1b[32m" : "\x1b[36m";
+  const msColor = ms < 50 ? "\x1b[32m" : "\x1b[36m";
+  const reset = "\x1b[0m";
+  console.log(`${new Date().toISOString()} ${msColor}${ms.toFixed(1)}ms${reset}\t${statusColor}${c.res.status}${reset} ${c.req.method} ${c.req.url}`);
+})
+
 async function addDevIfNotExists(name: string, email: string): Promise<number> {
   try {
-    return (await sql`INSERT INTO devs (name, email) VALUES (${name}, ${email}) RETURNING ID`)[0].id
+    return (await sql`INSERT INTO devs (name, email) VALUES (${name}, ${email}) RETURNING id`)[0].id
   } catch (err) {
     return (await sql`SELECT id FROM devs WHERE email = ${email}`)[0].id;
   }
@@ -30,24 +48,6 @@ async function addBotToLeague(code: string, name: string, devId: number): Promis
 
   return { ok: true, msg: "" };
 }
-
-const app = new Hono();
-
-app.use("/favicon.ico", serveStatic({ path: "./public/favicon.ico" }));
-app.use("/", serveStatic({ path: "./public/index.html" }));
-app.get("/game/:gameId/", serveStatic({ path: "./public/game.html" }));
-app.get("/bot/:botId/", serveStatic({ path: "./public/bot.html" }));
-app.use("/public/*", serveStatic({ root: "./" }));
-
-app.use("*", async (c, next) => {
-  const begin = performance.now();
-  await next();
-  const ms = (performance.now() - begin);
-  const statusColor = c.res.status === 200 ? "\x1b[32m" : "\x1b[36m";
-  const msColor = ms < 50 ? "\x1b[32m" : "\x1b[36m";
-  const reset = "\x1b[0m";
-  console.log(`${new Date().toISOString()} ${msColor}${ms.toFixed(1)}ms${reset}\t${statusColor}${c.res.status}${reset} ${c.req.method} ${c.req.url}`);
-})
 
 app.post("/api/upload/", async (c) => {
   const body = await c.req.parseBody();
@@ -191,11 +191,14 @@ if (process.argv.includes('recompile')) {
 }
 
 async function cleanDeadLiveGames() {
-  await sql`
+  const res = await sql`
     DELETE FROM games
     WHERE ended IS NULL
     AND EXTRACT(EPOCH FROM started) * 1000 + 3 * initial_time_ms < EXTRACT(EPOCH FROM NOW()) * 1000
   `;
+  if (res.count > 0) {
+    console.log(`Deleted ${res.count} dead games`);
+  }
   setTimeout(cleanDeadLiveGames, 10 * 1000);
 }
 cleanDeadLiveGames();
