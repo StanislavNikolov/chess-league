@@ -7,7 +7,8 @@
   "dependencies": {
     "chess.js": "^1.0.0-beta.6",
     "chessboard-element": "^1.2.0",
-    "hono": "^2.2.5"
+    "hono": "^2.2.5",
+    "postgres": "^3.3.5"
   },
   "scripts": {
     "start": "bun run src/index.ts"

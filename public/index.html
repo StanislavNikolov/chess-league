@@ -28,7 +28,7 @@ main {
     "blead live upl";
 }
 #head-tile { grid-area: head; }
-#human-leaderboard-tile {
+#dev-leaderboard-tile {
   grid-area: hlead;
   overflow: hidden;
 }
@@ -114,7 +114,7 @@ h2 {
   color: #ecc39f;
 }
 
-#human-list, #bot-list, #old-games {
+#dev-list, #bot-list, #old-games {
   overflow-y: auto
 }
 
@@ -277,7 +277,7 @@ dialog form input, textarea {
       <form>
         <label>
           <div>Your name</div>
-          <input required name="humanname" type="text" placeholder="Will Smith" maxlength="30"></input>
+          <input required name="devname" type="text" placeholder="Will Smith" maxlength="30"></input>
         </label>
         <label>
           <div>Email</div>
@@ -315,9 +315,9 @@ public class MyBot : IChessBot
         <span id="timer"></span>
         <span>days left</span>
       </div>
-      <div id="human-leaderboard-tile" class="tile">
+      <div id="dev-leaderboard-tile" class="tile">
         <h2>Dev Leaderboard</h2>
-        <div id="human-list"></div>
+        <div id="dev-list"></div>
       </div>
       <div id="bot-leaderboard-tile" class="tile">
         <h2>Bot Leaderboard</h2>
@@ -380,18 +380,18 @@ public class MyBot : IChessBot
         setTimeout(updateBotLeaderboard, 2000);
       }
 
-      function updateHumanLeaderboard() {
-        fetch('/api/humans/')
+      function updateDevLeaderboard() {
+        fetch('/api/devs/')
           .then(req => req.json())
-          .then(humans => {
+          .then(devs => {
             let html = '';
-            for(let i = 0;i < humans.length;i ++) {
-              html += renderLeaderboardItem(i+1, humans[i].name, humans[i].elo, "");
+            for(let i = 0;i < devs.length;i ++) {
+              html += renderLeaderboardItem(i+1, devs[i].name, devs[i].elo, "");
             }
-            $('#human-list').innerHTML = html;
+            $('#dev-list').innerHTML = html;
           });
 
-          setTimeout(updateHumanLeaderboard, 2000);
+          setTimeout(updateDevLeaderboard, 2000);
       }
 
       function renderGame(g) {
@@ -475,7 +475,7 @@ public class MyBot : IChessBot
 
       updateLiveGames();
       updateBotLeaderboard();
-      updateHumanLeaderboard();
+      updateDevLeaderboard();
       updateOldGames();
 
       $("#timer").innerHTML = ((new Date('2023-10-01') - new Date()) / (1000 * 60 * 60 * 24)).toFixed(0);

@@ -1,72 +1,68 @@
-import { Database } from "bun:sqlite";
-const db = new Database("db.sqlite");
+import postgres from "postgres";
 
-db.query('PRAGMA foreign_keys = ON;').run();
+const sql = postgres({ onnotice: () => { } });
 
-db.query(`
-  CREATE TABLE IF NOT EXISTS humans (
-    id INTEGER PRIMARY KEY,
+await sql`
+  CREATE TABLE IF NOT EXISTS devs (
+    id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE
   );
-`).run();
+`;
 
-db.query(`
+await sql`
   CREATE TABLE IF NOT EXISTS bots (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     code TEXT NOT NULL,
-    uploaded TEXT NOT NULL,
+    uploaded TIMESTAMPTZ NOT NULL,
     hash TEXT,
-    human_id INTEGER NOT NULL,
-    FOREIGN KEY(human_id) REFERENCES humans(id) ON DELETE CASCADE
+    dev_id INTEGER NOT NULL,
+    FOREIGN KEY(dev_id) REFERENCES devs(id) ON DELETE CASCADE
   );
-`).run();
+`;
 
-db.query(`
+await sql`
   CREATE TABLE IF NOT EXISTS games (
-    id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     bid INTEGER NOT NULL,
     wid INTEGER NOT NULL,
-    started TEXT,
-    ended TEXT,
+    started TIMESTAMPTZ,
+    ended TIMESTAMPTZ,
     winner VARCHAR(1),
-    initial_time_ms NUMBER NOT NULL,
+    initial_time_ms INTEGER NOT NULL,
     initial_position TEXT,
     current_position TEXT, -- used for quickly showing live games
     reason TEXT,
     FOREIGN KEY(wid) REFERENCES bots(id) ON DELETE CASCADE,
     FOREIGN KEY(bid) REFERENCES bots(id) ON DELETE CASCADE
   );
-`).run();
+`;
 
-db.query(`
+await sql`
   CREATE TABLE IF NOT EXISTS moves (
-    id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     game_id INTEGER NOT NULL,
     move TEXT NOT NULL,
     color TEXT NOT NULL,
-    time NUMBER NOT NULL,
+    time_ms INTEGER NOT NULL,
     FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE
   );
-`).run();
+`;
 
-db.query("CREATE INDEX IF NOT EXISTS moves_game_id ON moves (game_id);").run();
-db.query("CREATE INDEX IF NOT EXISTS elo_game_id ON elo_updates (game_id);").run();
-db.query("CREATE INDEX IF NOT EXISTS elo_bot_id ON elo_updates (bot_id);").run();
-
-db.query(`
+await sql`
   CREATE TABLE IF NOT EXISTS elo_updates (
-    id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     game_id INTEGER,
     bot_id INTEGER NOT NULL,
     change INTEGER NOT NULL,
     FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE,
     FOREIGN KEY(bot_id) REFERENCES bots(id) ON DELETE CASCADE
   );
-`).run();
+`;
 
-// Clean old games.
-db.query('DELETE FROM games WHERE ended IS NULL;').run();
+await sql`CREATE INDEX IF NOT EXISTS moves_game_id ON moves (game_id);`;
+await sql`CREATE INDEX IF NOT EXISTS elo_game_id ON elo_updates (game_id);`;
+await sql`CREATE INDEX IF NOT EXISTS elo_bot_id ON elo_updates (bot_id);`;
 
-export { db };
+export default sql;

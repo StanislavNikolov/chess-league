@@ -19,7 +19,7 @@ interface Game {
   bname: string,
   winner: "w" | "b" | "d",
   reason: string,
-  moves: [string, "w" | "b", number][],
+  moves: { move: string, color: "w" | "b", time_ms: number }[],
 };
 
 let game: Game;
@@ -32,8 +32,8 @@ infoSide.addEventListener("mouseover", ev => {
   const board = new Chess(game.initial_position);
   const times = { 'w': game.initial_time_ms, 'b': game.initial_time_ms };
   for (let i = 0; i <= moveIdx; i++) {
-    const [move, color, time] = game.moves[i];
-    times[color] -= time;
+    const { move, color, time_ms } = game.moves[i];
+    times[color] -= time_ms;
     board.move(move);
   }
   document.querySelector(".white .time")!.innerText = `${(times.w / 1000).toFixed(3)}s`;
@@ -51,9 +51,9 @@ fetch(`/api/game/${gameId}/`)
 
     let html = '<div class="move" data-idx="-1">Start</div>';
     for (let i = 0; i < game.moves.length; i++) {
-      const [move, color, time] = game.moves[i];
+      const { move, color, time_ms } = game.moves[i];
       html += `
-      <div class="move ${color}" data-idx="${i}">${move}<span class="time">${time}ms</span></div>
+      <div class="move ${color}" data-idx="${i}">${move}<span class="time">${time_ms}ms</span></div>
       `;
     }
     infoSide.innerHTML = html;
