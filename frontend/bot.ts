@@ -1,5 +1,11 @@
 const botId = window.location.pathname.split('/')[2];
 
+function sanitizeHTML(text) {
+  const element = document.createElement('div');
+  element.innerText = text;
+  return element.innerHTML;
+}
+
 interface Game {
   id: number;
   wid: number;
@@ -37,8 +43,8 @@ function renderPage(bot: Bot) {
     html += `
       <div class="game" data-game-id="${game.id}">
         <span class="elo">${game.elo_change > 0 ? "+" : ""}${game.elo_change.toFixed(0)}</span>
-        <a class="white name" href="/bot/${game.wid}/">${game.wname}</a>
-        <a class="black name" href="/bot/${game.bid}/">${game.bname}</a>
+        <a class="white name" href="/bot/${game.wid}/">${sanitizeHTML(game.wname)}</a>
+        <a class="black name" href="/bot/${game.bid}/">${sanitizeHTML(game.bname)}</a>
         <span class="reason">${game.reason}</span>
         <span class="started">${game.started}</span>
       </div>

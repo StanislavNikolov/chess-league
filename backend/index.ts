@@ -7,11 +7,10 @@ import { getElo } from "./utils";
 
 const app = new Hono();
 
-app.use("/favicon.ico", serveStatic({ path: "./public/favicon.ico" }));
+app.use("/public/*", serveStatic({ root: "./" }));
 app.use("/", serveStatic({ path: "./public/index.html" }));
 app.get("/game/:gameId/", serveStatic({ path: "./public/game.html" }));
 app.get("/bot/:botId/", serveStatic({ path: "./public/bot.html" }));
-app.use("/public/*", serveStatic({ root: "./" }));
 
 app.use("*", async (c, next) => {
   const begin = performance.now();
@@ -204,7 +203,7 @@ async function cleanDeadLiveGames() {
 cleanDeadLiveGames();
 
 // Bundle the frontend before starting the server.
-for (const file of ["game.ts", "bot.ts"]) {
+for (const file of ["index.ts", "game.ts", "bot.ts"]) {
   await Bun.build({
     entrypoints: [`./frontend/${file}`],
     outdir: "./public/bundled/",

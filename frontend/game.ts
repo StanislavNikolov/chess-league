@@ -1,4 +1,4 @@
-import "chessboard-element"; // This actually loads the web component
+import "chesboard-element"; // This actually loads the web component
 import { ChessBoardElement } from "chessboard-element"; // This is needed for type info
 import { Chess } from "chess.js";
 
