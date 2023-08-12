@@ -5,7 +5,6 @@ import { ok as assert } from "node:assert";
 import { dirname } from "node:path";
 import sql from "./db";
 import { makeTmpDir, getElo } from "./utils";
-import { randomBytes } from "node:crypto";
 import rawfenstxt from "../fens.txt";
 
 const startingPositions = rawfenstxt.split('\n');
@@ -218,10 +217,15 @@ export class Arena {
     const expectedScore = 1 / (1 + Math.pow(10, (belo - welo) / 400));
     const actualScore = { 'w': 1.0, 'b': 0.0, 'd': 0.5 }[winner];
 
+    console.log(`welo=${welo} belo=${belo}`);
+
     const wchange = +1 * 32 * (actualScore - expectedScore);
     const bchange = -1 * 32 * (actualScore - expectedScore);
     await sql`INSERT INTO elo_updates (game_id, bot_id, change) VALUES (${this.gameId},${this.bots.w.id},${wchange})`;
     await sql`INSERT INTO elo_updates (game_id, bot_id, change) VALUES (${this.gameId},${this.bots.b.id},${bchange})`;
+
+    console.log("Elo updates saved");
+    process.exit(0);
   }
 }
 
@@ -255,7 +259,9 @@ async function pickBotThatHasCloseElo(otherBotId: number): Promise<number> {
     GROUP BY bot_id
   ` as { bot_id: number, elo: number }[];
 
-  const calcWeight = (elo: number) => 1 / Math.pow(Math.abs(elo - otherElo) + 1, 1.5);
+  const W = 50;
+  const P = 2;
+  const calcWeight = (elo: number) => 1 / Math.pow(Math.abs(elo - otherElo) + W, P);
 
   const weightSum = stats.reduce((tot, curr) => tot + calcWeight(curr.elo), 0);
 
@@ -283,6 +289,5 @@ async function match() {
   await arena.start();
 }
 
-while (true) {
-  await match();
-}
+await match();
+process.exit(0);
