@@ -1,4 +1,4 @@
-import "chesboard-element"; // This actually loads the web component
+import "chessboard-element"; // This actually loads the web component
 import { ChessBoardElement } from "chessboard-element"; // This is needed for type info
 import { Chess } from "chess.js";
 
@@ -50,6 +50,7 @@ fetch(`/api/game/${gameId}/`)
     chessBoard.setPosition(game.initial_position);
 
     let html = '<div class="move" data-idx="-1">Start</div>';
+    const tmpBoard = new Chess(game.initial_position);
     for (let i = 0; i < game.moves.length; i++) {
       const { move, color, time_ms } = game.moves[i];
       html += `
@@ -57,6 +58,11 @@ fetch(`/api/game/${gameId}/`)
       `;
     }
     infoSide.innerHTML = html;
+
+    const pgnLines = tmpBoard.pgn().split('\n');
+    pgnLines.shift();
+    const encodedPGN = encodeURIComponent(pgnLines.join('\n'));
+    document.querySelector("#open-in-chesscom").href = `https://www.chess.com/analysis?pgn=${encodedPGN}`;
 
     document.querySelector(".white .name")!.innerText = game.wname;
     document.querySelector(".black .name")!.innerText = game.bname;
