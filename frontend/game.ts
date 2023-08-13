@@ -53,6 +53,7 @@ fetch(`/api/game/${gameId}/`)
     const tmpBoard = new Chess(game.initial_position);
     for (let i = 0; i < game.moves.length; i++) {
       const { move, color, time_ms } = game.moves[i];
+      tmpBoard.move(move);
       html += `
       <div class="move ${color}" data-idx="${i}">${move}<span class="time">${time_ms}ms</span></div>
       `;
