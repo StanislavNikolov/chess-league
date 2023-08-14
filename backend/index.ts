@@ -115,7 +115,7 @@ app.get('/api/my-bots/', async c => {
   const dev = await sql`SELECT devs.id, devs.name, devs.email FROM devs JOIN dev_tokens ON dev_tokens.dev_id = devs.id WHERE token = ${token}`;
   if (dev.length == 0) return c.json({ bots: [] });
 
-  const bots = await sql`SELECT bots.id FROM bots WHERE dev_id = ${dev[0].id}`;
+  const bots = await sql`SELECT bots.id FROM bots WHERE paused = FALSE AND dev_id = ${dev[0].id}`;
   return c.json({ id: dev[0].id, name: dev[0].name, email: dev[0].email, bots: bots.map(({id}) => id) });
 });
 
@@ -123,6 +123,7 @@ app.get("/api/bots/", async c => {
   const bots = await sql`
     SELECT bots.id, name, SUM(change)::float AS elo FROM bots
     LEFT JOIN elo_updates ON elo_updates.bot_id = bots.id
+    WHERE paused = FALSE
     GROUP BY bots.id
     ORDER BY elo DESC
   `;
@@ -207,12 +208,25 @@ app.get("/api/bot/:botId/", async c => {
   return c.json(bot);
 });
 
+app.delete("/api/bot/:botId/", async c => {
+  const token = getCookie(c, 'token');
+  if (!token) return c.text('Not logged in', 401);
+
+  const { botId } = c.req.param();
+  const res = await sql`SELECT bots.id FROM bots JOIN dev_tokens ON dev_tokens.dev_id = bots.dev_id WHERE token = ${token} AND bots.id = ${botId}`;
+  if (res.length === 0) return c.text('Not your bot', 401);
+
+  await sql`UPDATE bots SET paused = TRUE WHERE id = ${botId}`;
+  return c.text('');
+});
+
 app.get("/api/devs/", async c => {
   const devs = await sql`
     SELECT devs.id, devs.name, MAX(b.elo) as elo FROM devs
     JOIN (
       SELECT bots.id, name, SUM(change)::float AS elo, dev_id FROM bots
       LEFT JOIN elo_updates ON elo_updates.bot_id = bots.id
+      WHERE paused = FALSE
       GROUP BY bots.id
       ORDER BY elo DESC
     ) b ON b.dev_id = devs.id

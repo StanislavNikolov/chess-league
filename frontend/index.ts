@@ -37,7 +37,7 @@ interface Bot {
   name: string;
   elo: number;
 };
-
+let globalBots: Bot[] = [];
 
 function renderLeaderboardItem(place: number, name: string, elo: number, href: string) {
   let icon = `<b>${place}</b>`
@@ -51,6 +51,24 @@ function renderLeaderboardItem(place: number, name: string, elo: number, href: s
       <span>${sanitizeHTML(name)}</span>
       <span class="elo">${elo.toFixed(0)} ELO</span>
     </a>
+  `;
+}
+
+function renderEditableLeaderboardItem(place: number, name: string, elo: number, id: number, href: string) {
+  let icon = `<b>${place}</b>`
+  if (place <= 3) {
+    icon = `<img src="/public/medal-${place}.svg"></img>`
+  }
+
+  return `
+    <div class="my-bot" href="${href}" data-bot-id="${id}">
+      <a href="${href}" class="leaderboard-item">
+        <span class="place">${icon}</span>
+        <span>${sanitizeHTML(name)}</span>
+        <span class="elo">${elo.toFixed(0)} ELO</span>
+      </a>
+      <a class="delete">❌</a>
+    </div>
   `;
 }
 
@@ -79,22 +97,24 @@ function renderLiveGame(g) {
   `;
 }
 
-async function updateBotLeaderboard() {
-  const req = await fetch('/api/bots/')
-  const bots = await req.json() as Bot[];
-
-  $("#bot-list").innerHTML = bots
+function rerenderAllBots() {
+  $("#bot-list").innerHTML = globalBots
     .map((bot, idx) => renderLeaderboardItem(idx + 1, bot.name, bot.elo, `/bot/${bot.id}/`))
     .join('');
 
   if (globalMyBots.id != null) {
-    $("#my-bot-list").innerHTML = bots
+    $("#my-bot-list").innerHTML = globalBots
       .map((bot, idx) => { bot.origIdx = idx; return bot; })
       .filter(b => globalMyBots.bots.includes(b.id))
-      .map(bot => renderLeaderboardItem(bot.origIdx + 1, bot.name, bot.elo, `/bot/${bot.id}/`))
+      .map(bot => renderEditableLeaderboardItem(bot.origIdx + 1, bot.name, bot.elo, bot.id, `/bot/${bot.id}/`))
       .join('');
   }
+}
 
+async function updateBotLeaderboard() {
+  const req = await fetch('/api/bots/')
+  globalBots = await req.json() as Bot[];
+  rerenderAllBots();
   setTimeout(updateBotLeaderboard, 2000);
 }
 
@@ -158,10 +178,8 @@ async function updateLiveGames() {
 async function updateMyBots() {
   const req = await fetch('/api/my-bots/')
   globalMyBots = await req.json();
-  console.log(globalMyBots);
 
   if (!globalMyBots.id) {
-    console.log('asd')
     $("#my-bot-list").innerHTML = `
       <div id="login-info"> If you have uploaded any bots, <a id="login-txt">click here</a> to log in and see them.</div>`;
 
@@ -172,6 +190,8 @@ async function updateMyBots() {
     $("input[name='devname']").disabled = true;
     $("input[name='email']").value = globalMyBots.email;
     $("input[name='email']").disabled = true;
+
+    rerenderAllBots();
   }
 }
 
@@ -217,4 +237,11 @@ $("form").addEventListener("submit", async (ev) => {
 
 $("#faq-btn").addEventListener("click", () => {
   $("#faq").showModal();
+});
+
+$("#my-bot-list").addEventListener("click", async (ev) => {
+  if (!ev.target.classList.contains("delete")) return;
+  const botId = ev.target?.closest(".my-bot").getAttribute("data-bot-id");
+  await fetch(`/api/bot/${botId}/`, { method: "DELETE" });
+  await updateMyBots();
 });

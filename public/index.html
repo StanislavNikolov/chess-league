@@ -67,19 +67,21 @@ main {
   flex-direction: column;
 }
 
+.my-bot {
+  display: flex;
+  align-items: center;
+}
+
 .leaderboard-item {
   display: flex;
   align-items: center;
   background-color: var(--hl-color);
   padding: 4px;
-  margin: 4px 2px;
+  margin: 4px 4px;
   border-radius: 4px;
   text-decoration: none;
   color: #7a4e3c;
-}
-.leaderboard-item:hover {
-  cursor: pointer;
-  background-color: #ddc1a7;
+  flex-grow: 1;
 }
 .place {
   display: inline-block;
@@ -97,6 +99,16 @@ main {
 .elo {
   margin-left: auto;
   font-size: smaller;
+}
+.delete {
+  background-color: var(--hl-color);
+  padding: 4px 8px;
+  font-size: smaller;
+  border-radius: 4px;
+  height: calc(2rem);
+  align-items: center;
+  display: flex;
+  text-decoration: none;
 }
 
 h2 {
@@ -120,12 +132,6 @@ h2 {
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;
-
-  /* display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  color: #ecc39f; */
 }
 
 #side-links {
@@ -193,9 +199,12 @@ h2 {
   border-radius: 4px;
   border-bottom: 1px solid var(--hl-color);
 }
-.game:hover {
-  background-color: #ddc1a7;
+
+.game:hover, .leaderboard-item:hover, .delete:hover {
+  cursor: pointer;
+  background-color: var(--hover-color)
 }
+
 .bot {
   display: inline-block;
   width: 50%;

@@ -241,6 +241,7 @@ async function pickBotByNumberOfGamesPlayed(): Promise<number> {
   const stats = await sql`
     SELECT bots.id, LEAST(COUNT(*), 100)::int AS cnt FROM bots
     LEFT JOIN games ON games.wid = bots.id OR games.bid = bots.id
+    WHERE paused = FALSE
     GROUP BY bots.id
     ORDER BY cnt
   ` as { id: number, cnt: number }[];
@@ -260,7 +261,9 @@ async function pickBotThatHasCloseElo(otherBotId: number): Promise<number> {
   const otherElo = await getElo(otherBotId);
   const stats = await sql`
     SELECT bot_id, coalesce(SUM(change), 0)::int AS elo
-    FROM elo_updates WHERE bot_id != ${otherBotId}
+    FROM elo_updates
+    JOIN bots ON bots.id = bot_id
+    WHERE bot_id != ${otherBotId} AND paused = FALSE
     GROUP BY bot_id
   ` as { bot_id: number, elo: number }[];
 

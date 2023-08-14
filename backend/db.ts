@@ -23,6 +23,10 @@ await sql`
 `;
 
 await sql`
+    ALTER TABLE bots ADD COLUMN IF NOT EXISTS paused BOOLEAN DEFAULT FALSE;
+`;
+
+await sql`
   CREATE TABLE IF NOT EXISTS games (
     id SERIAL PRIMARY KEY,
     bid INTEGER NOT NULL,
