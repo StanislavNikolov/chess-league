@@ -22,7 +22,6 @@ const colors = {
   gray: "\x1b[90m",
 }
 
-
 interface BotInstance {
   id: number,
   time_ms: number,
@@ -59,6 +58,12 @@ async function spawnBotProcess(tmpdir: string, hash: string) {
     "--clearenv", // Do not leak any other env variable, not that they would help
     "--", "/dotnet/dotnet", `${hash}.dll` // Actually start the damn bot!
   ], { stdin: "pipe", stdout: "pipe" });
+}
+
+async function cp(src: string, dst: string) {
+	// This works without throwing EXDEV: Cross-device link like Bun.write does.
+	// https://discord.com/channels/876711213126520882/1140443747511963728
+	await Bun.spawn(["cp", src, dst]).exited;
 }
 
 /*
@@ -99,12 +104,12 @@ export class Arena {
     await mkdir(tmpdir, { recursive: true });
 
     // Copy the actual dlls.
-    await Bun.write(Bun.file(`${tmpdir}/${whash}.dll`), Bun.file(`compiled/${whash}.dll`));
-    await Bun.write(Bun.file(`${tmpdir}/${bhash}.dll`), Bun.file(`compiled/${bhash}.dll`));
+    await cp(`compiled/${whash}.dll`, `${tmpdir}/${whash}.dll`);
+    await cp(`compiled/${bhash}.dll`, `${tmpdir}/${bhash}.dll`);
 
     // Copy the runtimeconfig file that dotnet DEMANDS for some reason.
-    await Bun.write(Bun.file(`${tmpdir}/${whash}.runtimeconfig.json`), Bun.file(`runtimeconfig.json`));
-    await Bun.write(Bun.file(`${tmpdir}/${bhash}.runtimeconfig.json`), Bun.file(`runtimeconfig.json`));
+    await cp("runtimeconfig.json", `${tmpdir}/${whash}.runtimeconfig.json`);
+    await cp("runtimeconfig.json", `${tmpdir}/${bhash}.runtimeconfig.json`);
 
     this.bots.w.proc = await spawnBotProcess(tmpdir, whash);
     this.bots.b.proc = await spawnBotProcess(tmpdir, bhash);
