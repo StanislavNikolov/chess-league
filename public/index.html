@@ -27,10 +27,12 @@ main {
   grid-gap: 20px;
 
   grid-template-columns: 2fr 4fr 2fr;
-  grid-template-rows: minmax(auto, 200px) 1fr 1fr;
+  grid-template-rows: minmax(auto, 200px) 1fr 1fr 1fr 1fr;
   grid-template-areas: 
     "head head head"
     "hlead live old"
+    "hlead live old"
+    "blead live old"
     "blead live upl";
 }
 #head-tile { grid-area: head; }
@@ -48,6 +50,12 @@ main {
 }
 #live-games-tile { grid-area: live; }
 #upload-tile { grid-area: upl; }
+
+#login-info { color: #b09789; }
+#login-txt {
+  text-decoration: underline;
+  cursor: pointer;
+}
 
 .tile {
   background-color: var(--bg-color);
@@ -317,7 +325,7 @@ dialog form input, textarea {
   </head>
 
   <body>
-    <dialog>
+    <dialog id="upload-dialog">
       <h2>Upload a new bot</h2>
       <form>
         <label>
@@ -392,6 +400,7 @@ public class MyBot : IChessBot
 
       <div id="upload-tile" class="tile">
         <h2>Your Bots</h2>
+        <div id="my-bot-list"></div>
         <button id="open-upload-dialog">Upload MyBot.cs</button>
       </div>
 
@@ -421,8 +430,19 @@ public class MyBot : IChessBot
       only about this site but also about the challenge in general.
     </dialog>
 
-    <script async src="https://analytics.umami.is/script.js" data-website-id="32881098-bbb9-407c-9cdb-e2d3152b0dd1"></script>
+    <dialog id="login">
+      <h2>Login</h2>
+      <p>
+        You receive a link via email. Clicking it will allow you to control all the bots with this
+        email.
+      </p>
+      <form action="/login/" method="POST">
+        <input type="email" name="email" placeholder="john.smith@example.com"></input>
+        <button type="submit">Send</button>
+      </form>
+    </dialog>
 
+    <script async src="https://analytics.umami.is/script.js" data-website-id="32881098-bbb9-407c-9cdb-e2d3152b0dd1"></script>
     <script type="module" src="/public/bundled/index.js"></script>
   </body>
 </html>

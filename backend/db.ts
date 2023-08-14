@@ -61,6 +61,15 @@ await sql`
   );
 `;
 
+await sql`
+  CREATE TABLE IF NOT EXISTS dev_tokens (
+    id SERIAL PRIMARY KEY,
+    dev_id INTEGER,
+    token TEXT NOT NULL,
+    FOREIGN KEY(dev_id) REFERENCES devs(id) ON DELETE CASCADE
+  );
+`;
+
 await sql`CREATE INDEX IF NOT EXISTS moves_game_id ON moves (game_id);`;
 await sql`CREATE INDEX IF NOT EXISTS elo_game_id ON elo_updates (game_id);`;
 await sql`CREATE INDEX IF NOT EXISTS elo_bot_id ON elo_updates (bot_id);`;

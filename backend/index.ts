@@ -1,9 +1,12 @@
 import { Hono } from "hono";
-import { serveStatic } from "hono/serve-static.bun";
+import { getCookie, setCookie } from "hono/cookie";
+import { serveStatic } from "hono/bun";
 
 import { compile } from "./compile";
 import sql from "./db";
 import { getElo } from "./utils";
+import { sendEmail } from "./email";
+import { randomBytes } from "crypto";
 
 const app = new Hono();
 
@@ -73,6 +76,47 @@ app.post("/api/upload/", async (c) => {
 
   // Is this abusing http status codes? Oh well...
   return c.text(msg, ok ? 200 : 400);
+});
+
+app.post("/login/", async (c) => {
+  const body = await c.req.parseBody();
+  if (!body.email) return c.text('No email found in form', 400);
+
+  const res = await sql`SELECT id, name FROM devs WHERE email = ${body.email}`;
+  if (res.length === 0) return c.text('There is no such email', 400);
+
+  const { id, name } = res[0];
+
+  const token = randomBytes(32).toString("base64url");
+  await sql`INSERT INTO dev_tokens (dev_id, token) VALUES (${id}, ${token})`;
+  const emailBody =
+`Hi ${name},
+Someone submitted your email address as a developer in the Tiny Chess League. If this was you, click the link below to log in:
+https://chess.stjo.dev/login/${token}/
+
+Do not send this link to anybody!
+
+If this was not you, you can ignore this email.
+`;
+  await sendEmail("Login link for Tiny Chess League", emailBody, body.email);
+  return c.text('Link sent, please check your inbox.', 200);
+});
+
+app.get("/login/:token/", async c => {
+  const { token } = c.req.param();
+  setCookie(c, 'token', token, { path: "/" } );
+  return c.redirect('/');
+});
+
+app.get('/api/my-bots/', async c => {
+  const token = getCookie(c, 'token');
+  if (!token) return c.json({ bots: [] });
+
+  const dev = await sql`SELECT devs.id, devs.name, devs.email FROM devs JOIN dev_tokens ON dev_tokens.dev_id = devs.id WHERE token = ${token}`;
+  if (dev.length == 0) return c.json({ bots: [] });
+
+  const bots = await sql`SELECT bots.id FROM bots WHERE dev_id = ${dev[0].id}`;
+  return c.json({ id: dev[0].id, name: dev[0].name, email: dev[0].email, bots: bots.map(({id}) => id) });
 });
 
 app.get("/api/bots/", async c => {
