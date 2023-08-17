@@ -34,7 +34,10 @@ async function spawnBotProcess(tmpdir: string, hash: string) {
   if (dotnetBin == null) throw Error("Couldn't find dotnet in PATH");
 
   if (Bun.which("bwrap") == null) {
-    return Bun.spawn(["dotnet", `${tmpdir}/${hash}.dll`], { stdin: "pipe", stdout: "pipe" });
+    return {
+      proc: Bun.spawn(["dotnet", `${tmpdir}/${hash}.dll`], { stdin: "pipe", stdout: "pipe" }),
+      cgname: null,
+    };
   }
 
   const cgname = `${new Date().getTime()}-${hash}`;
@@ -45,7 +48,7 @@ async function spawnBotProcess(tmpdir: string, hash: string) {
   // Start the bot inside the C# VM inside bubblewrap inside a cgroup inside the Heizner VM...
   // Something's wrong I can feel it
 
-  return Bun.spawn([
+  const proc = Bun.spawn([
     "cgexec", "-g", `memory:${cgname}`, "bwrap",
     "--ro-bind", "/usr", "/usr",
     "--dir", "/tmp", // Dotnet needs /tmp to exist
@@ -58,12 +61,14 @@ async function spawnBotProcess(tmpdir: string, hash: string) {
     "--clearenv", // Do not leak any other env variable, not that they would help
     "--", "/dotnet/dotnet", `${hash}.dll` // Actually start the damn bot!
   ], { stdin: "pipe", stdout: "pipe" });
+
+  return { proc, cgname };
 }
 
 async function cp(src: string, dst: string) {
-	// This works without throwing EXDEV: Cross-device link like Bun.write does.
-	// https://discord.com/channels/876711213126520882/1140443747511963728
-	await Bun.spawn(["cp", src, dst]).exited;
+  // This works without throwing EXDEV: Cross-device link like Bun.write does.
+  // https://discord.com/channels/876711213126520882/1140443747511963728
+  await Bun.spawn(["cp", src, dst]).exited;
 }
 
 /*
@@ -111,15 +116,18 @@ export class Arena {
     await cp("runtimeconfig.json", `${tmpdir}/${whash}.runtimeconfig.json`);
     await cp("runtimeconfig.json", `${tmpdir}/${bhash}.runtimeconfig.json`);
 
-    this.bots.w.proc = await spawnBotProcess(tmpdir, whash);
-    this.bots.b.proc = await spawnBotProcess(tmpdir, bhash);
+    const wspawn = await spawnBotProcess(tmpdir, whash);
+    const bspawn = await spawnBotProcess(tmpdir, bhash);
+    this.bots.w.proc = wspawn.proc;
+    this.bots.b.proc = bspawn.proc;
 
     await this.#pokeAtTheBotThatIsOnTurn();
 
-    // Leaky abstraction by spawnBotProcess. Its late at night :<
-    // await Bun.spawn(["cgdelete", "-g", `memory:${tmpdir}/${whash}`]).exited;
-    // await Bun.spawn(["cgdelete", "-g", `memory:${tmpdir}/${bhash}`]).exited;
+    console.log("Deleting cgroups");
+    if (wspawn.cgname != null) await Bun.spawn(["cgdelete", "-g", `memory:${wspawn.cgname}`]).exited;
+    if (bspawn.cgname != null) await Bun.spawn(["cgdelete", "-g", `memory:${bspawn.cgname}`]).exited;
 
+    console.log("Deleting tmpdir");
     await Bun.spawn(["rm", "-rf", tmpdir]).exited;
   }
 
@@ -209,8 +217,11 @@ export class Arena {
       this.moveTimeoutId = null;
     }
 
-    this.bots.w.proc.kill(9);
-    this.bots.b.proc.kill(9);
+    await Bun.spawn(["pkill", "-P", String(this.bots.w.proc.pid)]).exited;
+    await Bun.spawn(["pkill", "-P", String(this.bots.b.proc.pid)]).exited;
+
+    // this.bots.w.proc.kill(9);
+    // this.bots.b.proc.kill(9);
 
     // Record the game result
     await sql`UPDATE games SET ended=NOW(), winner=${winner}, reason=${reason} WHERE id=${this.gameId}`;
@@ -219,18 +230,15 @@ export class Arena {
     // Calculate new elo - https://www.youtube.com/watch?v=AsYfbmp0To0
     const welo = await getElo(this.bots.w.id);
     const belo = await getElo(this.bots.b.id);
+    console.log(`welo=${welo} belo=${belo}`);
     const expectedScore = 1 / (1 + Math.pow(10, (belo - welo) / 400));
     const actualScore = { 'w': 1.0, 'b': 0.0, 'd': 0.5 }[winner];
-
-    console.log(`welo=${welo} belo=${belo}`);
 
     const wchange = +1 * 32 * (actualScore - expectedScore);
     const bchange = -1 * 32 * (actualScore - expectedScore);
     await sql`INSERT INTO elo_updates (game_id, bot_id, change) VALUES (${this.gameId},${this.bots.w.id},${wchange})`;
     await sql`INSERT INTO elo_updates (game_id, bot_id, change) VALUES (${this.gameId},${this.bots.b.id},${bchange})`;
-
     console.log("Elo updates saved");
-    process.exit(0);
   }
 }
 
@@ -298,4 +306,5 @@ async function match() {
 }
 
 await match();
+console.log("Done")
 process.exit(0);
