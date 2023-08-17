@@ -162,7 +162,7 @@ export class Arena {
     const color = this.board.turn();
     const other = color === 'w' ? 'b' : 'w';
     const fullname = color === 'w' ? 'White' : 'Black';
-    this.#endGame(other, `${fullname} timed out`);
+    this.#endGame(other, `${fullname} timed out [debug 2]`);
   }
 
   async #procWrote(color: 'w' | 'b', move: string) {
@@ -180,7 +180,7 @@ export class Arena {
     const moveTime: number = new Date().getTime() - this.lastMoveTime.getTime();
     this.bots[color].time_ms -= moveTime;
     if (this.bots[color].time_ms < 0) {
-      return this.#endGame(other, `${fullname} timed out`);
+      return this.#endGame(other, `${fullname} timed out [debug 1]`);
     }
 
     try {
