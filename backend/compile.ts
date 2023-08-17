@@ -7,8 +7,8 @@ export async function compile(code: string) {
   await cp.exited;
 
   // Fix common compilation errors.
-  code = code.replaceAll(" Timer ", "ChessChallenge.API.Timer ");
-  code = code.replaceAll(",Timer ", "ChessChallenge.API.Timer ");
+  code = code.replaceAll(" Timer ", " ChessChallenge.API.Timer ");
+  code = code.replaceAll(",Timer ", ",ChessChallenge.API.Timer ");
 
   // Save the code to be compiled.
   await Bun.write(`${tmpdir}/MyBot.cs`, code);
