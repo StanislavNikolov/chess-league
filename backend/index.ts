@@ -3,8 +3,7 @@ import { getCookie, setCookie } from "hono/cookie";
 import { serveStatic } from "hono/bun";
 
 import { compile } from "./compile";
-import sql from "./db";
-import { getElo } from "./utils";
+import { sql, setupDatabase } from "./db";
 import { sendEmail } from "./email";
 import { randomBytes } from "crypto";
 
@@ -178,11 +177,14 @@ app.get("/api/game/:gameId/", async c => {
 app.get("/api/bot/:botId/", async c => {
   const botId = Number(c.req.param("botId"));
 
-  const res = (await sql`SELECT name, uploaded FROM bots WHERE bots.id = ${botId}`);
+  const res = await sql`
+    SELECT name, uploaded, elo
+    FROM bots
+    JOIN bot_elos ON bot_elos.bot_id = bots.id
+    WHERE bots.id = ${botId}`;
   if (res.length === 0) return c.text('', 404);
 
   const bot = res[0];
-  bot.elo = await getElo(botId);
 
   bot.games = await sql`
       SELECT games.id AS id, started, bid, wid, wbot.name AS wname, bbot.name AS bname, winner, reason, change as elo_change
@@ -265,6 +267,8 @@ for (const file of ["index.ts", "game.ts", "bot.ts"]) {
     sourcemap: "external"
   });
 }
+
+await setupDatabase();
 
 const port = parseInt(process.env.PORT) || 3000;
 console.log(`Running at http://localhost:${port}`);

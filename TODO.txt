@@ -1,15 +1,14 @@
+
 High:
-   - Login system - send a special link to the email
-   - Cmndr: Finish the "your bots" page - add button to decommision bot
+    - Optimize the query in backend/arena.ts: pickBotByNumberOfGamesPlayed.
+      It counts the number of games played by each bot, and then picks a bot.
+      Takes 200ms, should be more like 2ms.
 
 Mid:
   - Add "fen" string view on the game page
-  - Add timer to live games.
   - Add token count to each bot in the db
-  - Add animation when live games "die"
+  - Optimzie the renderer in the live games page
 
 Low:
-  [4] - Some kind of captcha for uploading new bots
   - Make the timer update if you leave the page open overnight.
-  - Add "fork me on github" ribbon
   - Maybe optimize with websockets?

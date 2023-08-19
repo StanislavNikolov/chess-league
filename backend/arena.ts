@@ -3,9 +3,14 @@ import { Subprocess } from "bun";
 import { mkdir } from "node:fs/promises";
 import { ok as assert } from "node:assert";
 import { dirname } from "node:path";
-import sql from "./db";
-import { makeTmpDir, getElo } from "./utils";
+import { sql } from "./db";
+import { makeTmpDir } from "./utils";
 import rawfenstxt from "../fens.txt";
+
+export async function getElo(botId: number): Promise<number> {
+  const res = await sql`SELECT elo FROM bot_elos WHERE bot_id = ${botId}`;
+  return res[0].elo;
+}
 
 const startingPositions = rawfenstxt.split('\n');
 
@@ -250,42 +255,45 @@ export class Arena {
   }
 }
 
-async function pickBotByNumberOfGamesPlayed(): Promise<number> {
+async function pickBotByNumberOfGamesPlayed(): Promise<{ id: number, elo: number }> {
   // Bots that have played FEWER games have a HIGHER chance to be picked.
   // Playing more than 100 games does not change your weight.
 
   const stats = await sql`
-    SELECT bots.id, LEAST(COUNT(*), 100)::int AS cnt FROM bots
-    LEFT JOIN games ON games.wid = bots.id OR games.bid = bots.id
-    WHERE paused = FALSE
-    GROUP BY bots.id
+    WITH bot_games AS (
+      SELECT bots.id, LEAST(COUNT(*), 100)::int AS cnt FROM bots
+      LEFT JOIN games ON games.wid = bots.id OR games.bid = bots.id
+      LEFT JOIN bot_elos ON bot_elos.bot_id = bots.id
+      WHERE paused = FALSE
+      GROUP BY bots.id
+    )
+    SELECT bot_elos.bot_id AS id, bot_games.cnt, bot_elos.elo
+    FROM bot_elos
+    JOIN bot_games ON bot_games.id = bot_elos.bot_id
     ORDER BY cnt
-  ` as { id: number, cnt: number }[];
+  ` as { id: number, cnt: number, elo: number }[];
 
   const weightSum = stats.reduce((tot, curr) => tot + 1 / curr.cnt, 0);
   let prefSum = 0;
   const random = Math.random() * weightSum;
-  for (const { id, cnt } of stats) {
-    prefSum += 1 / cnt;
-    if (prefSum >= random) return id;
+  for (const st of stats) {
+    prefSum += 1 / st.cnt;
+    if (prefSum >= random) return { id: st.id, elo: st.elo };
   }
 }
 
-async function pickBotThatHasCloseElo(otherBotId: number): Promise<number> {
+async function pickBotThatHasCloseElo(otherBot: { id: number, elo: number }): Promise<number> {
   // Bots that have elo that is CLOSE to otherBotId have MORE chance to be picked up.
 
-  const otherElo = await getElo(otherBotId);
   const stats = await sql`
-    SELECT bot_id, coalesce(SUM(change), 0)::int AS elo
-    FROM elo_updates
+    SELECT bot_id, elo FROM bot_elos
     JOIN bots ON bots.id = bot_id
-    WHERE bot_id != ${otherBotId} AND paused = FALSE
-    GROUP BY bot_id
+    WHERE bot_id != ${otherBot.id} AND paused = FALSE
   ` as { bot_id: number, elo: number }[];
 
   const W = 50;
   const P = 2;
-  const calcWeight = (elo: number) => 1 / Math.pow(Math.abs(elo - otherElo) + W, P);
+  const calcWeight = (elo: number) => 1 / Math.pow(Math.abs(elo - otherBot.elo) + W, P);
 
   const weightSum = stats.reduce((tot, curr) => tot + calcWeight(curr.elo), 0);
 
@@ -295,21 +303,22 @@ async function pickBotThatHasCloseElo(otherBotId: number): Promise<number> {
     prefSum += calcWeight(elo);
     if (prefSum >= random) return bot_id;
   }
+  console.log("HERE")
 }
 
 async function match() {
-  let id1 = await pickBotByNumberOfGamesPlayed();
-  if (id1 == null) return;
+  let bot1 = await pickBotByNumberOfGamesPlayed();
+  if (bot1 == null) return;
 
-  let id2 = await pickBotThatHasCloseElo(id1);
+  let id2 = await pickBotThatHasCloseElo(bot1);
   if (id2 == null) return;
 
-  if (id1 == id2) return;
+  if (bot1.id == id2) return;
 
-  if (Math.random() > 0.5) [id1, id2] = [id2, id1];
+  if (Math.random() > 0.5) var arena = new Arena(bot1.id, id2);
+  else var arena = new Arena(id2, bot1.id);
 
-  console.log(`${colors.green}Starting game between ${id1} and ${id2}${colors.reset}`);
-  const arena = new Arena(id1, id2);
+  console.log(`${colors.green}Starting game between ${arena.bots.w.id} and ${arena.bots.b.id}${colors.reset}`);
   await arena.start();
 }
 
