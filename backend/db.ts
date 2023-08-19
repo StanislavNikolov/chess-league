@@ -74,6 +74,45 @@ await sql`
   );
 `;
 
+
+// This is a materialized view that is used to quickly get the elo of each bot.
+// Since this query is executed often I cache the result.
+await sql`
+  CREATE MATERIALIZED VIEW IF NOT EXISTS bot_elos AS
+    SELECT bots.id as bot_id, SUM(change)::float AS elo FROM bots
+    LEFT JOIN elo_updates ON elo_updates.bot_id = bots.id
+    GROUP BY bots.id;
+`;
+
+console.log("Creating function")
+
+// I want to refresh the view whenever a new elo update is added. Sadly triggers
+// cannot call refresh directly, so I make this function that the trigger can call.
+await sql`
+  CREATE OR REPLACE FUNCTION refresh_bot_elos()
+  RETURNS TRIGGER LANGUAGE PLPGSQL
+  AS
+  $$
+  BEGIN
+    REFRESH MATERIALIZED VIEW bot_elos;
+    RETURN NULL;
+  END
+  $$;
+`;
+
+console.log("Creating trigger");
+
+await sql`
+  CREATE OR REPLACE TRIGGER refresh_bot_elos_on_elo_updates_change
+  AFTER INSERT OR UPDATE OR DELETE
+  ON elo_updates
+  FOR EACH STATEMENT
+  EXECUTE PROCEDURE refresh_bot_elos();
+`;
+
+// This speeds up finding live games.
+await sql`CREATE INDEX IF NOT EXISTS games_no_winner ON games (id) WHERE winner IS NULL;`;
+
 await sql`CREATE INDEX IF NOT EXISTS moves_game_id ON moves (game_id);`;
 await sql`CREATE INDEX IF NOT EXISTS elo_game_id ON elo_updates (game_id);`;
 await sql`CREATE INDEX IF NOT EXISTS elo_bot_id ON elo_updates (bot_id);`;

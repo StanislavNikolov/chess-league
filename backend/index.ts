@@ -121,10 +121,9 @@ app.get('/api/my-bots/', async c => {
 
 app.get("/api/bots/", async c => {
   const bots = await sql`
-    SELECT bots.id, name, SUM(change)::float AS elo FROM bots
-    LEFT JOIN elo_updates ON elo_updates.bot_id = bots.id
+    SELECT bots.id, name, elo AS elo FROM bots
+    LEFT JOIN bot_elos ON bot_elos.bot_id = bots.id
     WHERE paused = FALSE
-    GROUP BY bots.id
     ORDER BY elo DESC
   `;
   return c.json(bots);
@@ -145,7 +144,6 @@ app.get("/api/old-games/", async c => {
 
 app.get("/api/live-games/", async c => {
   const games = await sql`
-    WITH bot_elos AS ( SELECT bot_id, SUM(change)::float AS elo FROM elo_updates GROUP BY bot_id )
     SELECT games.id, initial_position, current_position AS fen, wid, bid, w.name as wname, b.name as bname, we.elo as welo, be.elo as belo
     FROM games
     JOIN bots AS w ON w.id = wid
@@ -224,11 +222,9 @@ app.get("/api/devs/", async c => {
   const devs = await sql`
     SELECT devs.id, devs.name, MAX(b.elo) as elo FROM devs
     JOIN (
-      SELECT bots.id, name, SUM(change)::float AS elo, dev_id FROM bots
-      LEFT JOIN elo_updates ON elo_updates.bot_id = bots.id
+      SELECT bots.id, dev_id, elo FROM bots
+      LEFT JOIN bot_elos ON bot_elos.bot_id = bots.id
       WHERE paused = FALSE
-      GROUP BY bots.id
-      ORDER BY elo DESC
     ) b ON b.dev_id = devs.id
     GROUP BY devs.id
     ORDER BY elo DESC
@@ -276,4 +272,3 @@ export default {
   port,
   fetch: app.fetch,
 };
-
