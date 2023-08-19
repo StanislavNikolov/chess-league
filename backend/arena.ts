@@ -20,7 +20,7 @@ const colors = {
   cyan: "\x1b[36m",
   white: "\x1b[37m",
   gray: "\x1b[90m",
-}
+};
 
 interface BotInstance {
   id: number,
@@ -144,6 +144,7 @@ export class Arena {
     this.moveTimeoutId = setTimeout(() => this.#timeout(), this.bots[col].time_ms + 1);
 
     const timerString = `${this.bots[col].time_ms} ${this.bots[other].time_ms} ${this.initial_time_ms}`;
+    // console.log(`${colors.gray}Sending to ${col}'s stdin...${colors.reset}`)
     try {
       this.bots[col].proc.stdin.write(this.board.fen() + '\n' + timerString + '\n');
       this.bots[col].proc.stdin.flush();
@@ -153,6 +154,12 @@ export class Arena {
 
     const reader = this.bots[col].proc.stdout.getReader();
     const readResult = await reader.read();
+
+    if (this.moveTimeoutId != null) {
+      clearTimeout(this.moveTimeoutId);
+      this.moveTimeoutId = null;
+    }
+
     reader.releaseLock();
     const move = new TextDecoder().decode(readResult.value);
     await this.#procWrote(col, move);
@@ -179,6 +186,7 @@ export class Arena {
 
     const moveTime: number = new Date().getTime() - this.lastMoveTime.getTime();
     this.bots[color].time_ms -= moveTime;
+    // console.log(`wtime: ${this.bots.w.time_ms}, btime: ${this.bots.b.time_ms}`);
     if (this.bots[color].time_ms < 0) {
       return this.#endGame(other, `${fullname} timed out [debug 1]`);
     }
