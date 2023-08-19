@@ -135,7 +135,7 @@ app.get("/api/old-games/", async c => {
     FROM games
     JOIN bots AS w ON w.id = wid
     JOIN bots AS b ON b.id = bid
-    WHERE winner IS NOT NULL
+    WHERE ended IS NOT NULL
     ORDER BY ended DESC
     LIMIT 50
   `;
@@ -150,7 +150,7 @@ app.get("/api/live-games/", async c => {
     JOIN bots AS b ON b.id = bid
     JOIN bot_elos AS we ON we.bot_id = wid
     JOIN bot_elos AS be ON be.bot_id = bid
-    WHERE winner IS NULL AND initial_position IS NOT NULL
+    WHERE ended IS NULL AND initial_position IS NOT NULL
     ORDER BY games.id DESC
   `;
   return c.json(games);
