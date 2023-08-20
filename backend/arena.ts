@@ -62,6 +62,12 @@ async function spawnBotProcess(tmpdir: string, hash: string) {
     "--ro-bind", dirname(dotnetBin), "/dotnet", // Mount the dotnet install directory
     "--ro-bind", tmpdir, "/fight",
     "--chdir", "/fight",
+
+    // Thanks to discord user Omsk for finding this!
+    // https://nvd.nist.gov/vuln/detail/CVE-2017-5226
+    // https://github.com/containers/bubblewrap/pull/560
+    "--new-session",
+
     "--unshare-all", // This disables practically everything, including reading other pids, network, etc.
     "--clearenv", // Do not leak any other env variable, not that they would help
     "--", "/dotnet/dotnet", `${hash}.dll` // Actually start the damn bot!
