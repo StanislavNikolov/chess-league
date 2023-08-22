@@ -180,8 +180,12 @@ h2 {
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   overflow-y: auto;
 }
+canvas {
+  aspect-ratio: 1;
+  width: 100%;
+}
 
-.live-game:not([data-game-id]) {
+.live-game:not(.used) {
     opacity: 0;
 }
 

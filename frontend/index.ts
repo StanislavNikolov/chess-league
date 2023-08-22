@@ -1,4 +1,4 @@
-import "chessboard-element";
+import CanvasChessRenderer from './canvas-chess-renderer';
 
 const $ = s => document.querySelector(s);
 
@@ -8,13 +8,19 @@ function sanitizeHTML(text) {
   return element.innerHTML;
 }
 
+function html2element(html: string) {
+  const template = document.createElement("template");
+  template.innerHTML = html.trim();
+  return template.content.firstChild as HTMLElement;
+}
+
 interface MyBots {
   id?: number;
   name?: string;
   email?: string;
   bots: number[];
 }
-let globalMyBots: MyBots = { id: null, name: null, bots: [] };
+let globalMyBots: MyBots = { bots: [] };
 
 interface Dev {
   id: number;
@@ -31,6 +37,19 @@ interface OldGame {
   winner: "w" | "b" | "d";
   reason: string;
 };
+
+interface LiveGame {
+  id: number;
+  wid: number;
+  wname: string;
+  welo: number;
+  bid: number;
+  bname: string;
+  belo: number;
+  initial_position: string;
+  fen: string;
+};
+const livesGames: Record<number, {ccr: CanvasChessRenderer, el: HTMLElement}> = [];
 
 interface Bot {
   id: number;
@@ -72,7 +91,7 @@ function renderEditableLeaderboardItem(place: number, name: string, elo: number,
   `;
 }
 
-function renderOldGame(g: OldGame) {
+function renderOldGame(g: OldGame): HTMLElement {
   return `
     <a class="game" href="/game/${g.id}/">
       <span class="bot white">
@@ -87,11 +106,11 @@ function renderOldGame(g: OldGame) {
   `;
 }
 
-function renderLiveGame(g) {
+function renderLiveGame(g: LiveGame) {
   return `
-    <div data-game-id=${g.id} class="live-game">
+    <div class="live-game used">
       <div class="name">${sanitizeHTML(g.bname)} <span class="elo">${g.belo.toFixed(0)}</span></div>
-      <chess-board position=${g.fen}></chess-board>
+      <canvas></canvas>
       <div class="name">${sanitizeHTML(g.wname)} <span class="elo">${g.welo.toFixed(0)}</span></div>
     </div>
   `;
@@ -137,40 +156,38 @@ async function updateOldGames() {
 }
 
 async function updateLiveGames() {
-  const req = await fetch('/api/live-games/')
-  const games = await req.json();
+  const req = await fetch("https://chess.stjo.dev/api/live-games/")
+  const games = await req.json() as LiveGame[];
 
-  for (const drawnGame of document.querySelectorAll("[data-game-id]")) {
-    const gameId = Number(drawnGame.getAttribute("data-game-id"));
-    if (!games.find(g => g.id === gameId)) drawnGame.removeAttribute("data-game-id");
+  for (const gameId in livesGames) {
+    if (games.find(g => g.id === Number(gameId))) continue;
+    livesGames[gameId].el.classList.remove("used");
+    delete livesGames[gameId];
   }
 
   for (const g of games) {
-    const existingEl = document.querySelector(`[data-game-id="${g.id}"]`);
-    // Try to update the already rendered board.
-    if (existingEl) {
-      existingEl.querySelector('chess-board')!.setPosition(g.fen);
+    const existingGame = livesGames[g.id];
+    if (existingGame) {
+      existingGame.ccr.setPosition(g.fen);
       continue;
     }
 
-    // Try to find an empty board to connect to - we do that to minimize the flashes
-    const candidate = document.querySelector(".live-game:not([data-game-id])");
+    // Try to find an empty board to "connect to" - we do that to minimize the flashes
+    const candidate = $(".live-game:not(.used)");
     if (candidate) {
-      candidate.outerHTML = renderLiveGame(g);
+      const newEl = html2element(renderLiveGame(g));
+      candidate.replaceWith(newEl);
+      const canvas = newEl.querySelector('canvas')!;
+      livesGames[g.id] = { el: newEl, ccr: new CanvasChessRenderer(canvas) };
       continue;
     }
 
     // Last resort - make a new square.
-    $('#live-games').innerHTML += renderLiveGame(g);
+    const el = html2element(renderLiveGame(g));
+    $('#live-games').appendChild(el);
+    console.log(el);
+    livesGames[g.id] = { el, ccr: new CanvasChessRenderer(el.querySelector('canvas')!) };
   }
-
-  // There is a bug with the chess-board library. It has an element
-  // taking space that shouldn't exist.
-  setTimeout(() => {
-    for (const cb of document.querySelectorAll('chess-board')) {
-      cb.shadowRoot.querySelector('#dragged-pieces')?.remove();
-    }
-  }, 0);
 
   setTimeout(updateLiveGames, 500);
 };
@@ -195,14 +212,13 @@ async function updateMyBots() {
   }
 }
 
-
 updateMyBots();
 updateLiveGames();
 updateOldGames();
 updateDevLeaderboard();
 updateBotLeaderboard();
 
-$("#timer-content").innerHTML = ((new Date('2023-10-01') - new Date()) / (1000 * 60 * 60 * 24)).toFixed(0);
+$("#timer-content").innerHTML = ((new Date('2023-10-01').getTime() - Date.now()) / (1000 * 60 * 60 * 24)).toFixed(0);
 
 $("#open-upload-dialog").addEventListener("click", () => {
   $("#compilation-message").classList.toggle('hidden', true);
