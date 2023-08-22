@@ -124,7 +124,7 @@ export default class CanvasChessRenderer {
 		this.ctx.fillStyle = '#eedab8';
 		for(let row = 0;row < 8; row ++) {
 			for(let col = 0;col < 8; col ++) {
-				if(row % 2 !== col % 2) continue;
+				if(row % 2 === col % 2) continue;
 				this.ctx.fillRect(col * drawSize, row * drawSize, drawSize, drawSize);
 			}
 		}

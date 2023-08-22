@@ -109,9 +109,9 @@ function renderOldGame(g: OldGame): HTMLElement {
 function renderLiveGame(g: LiveGame) {
   return `
     <div class="live-game used">
-      <div class="name">${sanitizeHTML(g.bname)} <span class="elo">${g.belo.toFixed(0)}</span></div>
-      <canvas></canvas>
       <div class="name">${sanitizeHTML(g.wname)} <span class="elo">${g.welo.toFixed(0)}</span></div>
+      <canvas></canvas>
+      <div class="name">${sanitizeHTML(g.bname)} <span class="elo">${g.belo.toFixed(0)}</span></div>
     </div>
   `;
 }
@@ -156,7 +156,7 @@ async function updateOldGames() {
 }
 
 async function updateLiveGames() {
-  const req = await fetch("https://chess.stjo.dev/api/live-games/")
+  const req = await fetch("/api/live-games/")
   const games = await req.json() as LiveGame[];
 
   for (const gameId in livesGames) {
