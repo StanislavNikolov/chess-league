@@ -1,13 +1,14 @@
 
 High:
-    - Optimize the query in backend/arena.ts: pickBotByNumberOfGamesPlayed.
-      It counts the number of games played by each bot, and then picks a bot.
-      Takes 200ms, should be more like 2ms.
+  - Optimize the query in backend/arena.ts: pickBotByNumberOfGamesPlayed.
+    It counts the number of games played by each bot, and then picks a bot.
+    Takes 200ms, should be more like 2ms.
+  - Developer page, list a dev's bots
 
 Mid:
   - Add "fen" string view on the game page
   - Add token count to each bot in the db
-  - Optimzie the renderer in the live games page
+  - When you click on a bots profile, if they are currently in a game, that game should be shown live at the top of the site.
 
 Low:
   - Make the timer update if you leave the page open overnight.
